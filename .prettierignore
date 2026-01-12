@@ -1,0 +1,24 @@
+# Dependency directories
+node_modules/
+dist/
+build/
+
+# Coverage reports
+coverage/
+
+# Documentation and metadata
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Cache and temporary files
+.cache/
+.next/
+.nuxt/
+
+# Environment files
+.env
+.env.*
+
+# Formatting files (optional)
+.prettierignore

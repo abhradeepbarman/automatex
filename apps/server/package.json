@@ -6,20 +6,33 @@
   "scripts": {
     "start": "tsc && node dist/index.js",
     "dev": "tsx --watch src/index.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "db:generate": "npx drizzle-kit --config src/drizzle.config.ts generate",
+    "db:migrate": "npx drizzle-kit --config src/drizzle.config.ts migrate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@repo/common": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1"
+    "drizzle-orm": "^0.45.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.16.3",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/cors": "^2.8.19",
     "@types/dotenv": "^8.2.3",
     "@types/express": "^5.0.6",
-    "tsx": "^4.21.0",
-    "@repo/typescript-config": "workspace:*",
-    "@repo/eslint-config": "workspace:*"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/pg": "^8.16.0",
+    "drizzle-kit": "^0.31.8",
+    "tsx": "^4.21.0"
   }
 }
