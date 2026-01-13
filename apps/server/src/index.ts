@@ -3,12 +3,19 @@ import config from './config';
 import cors from 'cors';
 import authRoutes from './routes/auth.routes';
 import errorHandler from './middlewares/error-handler';
+import cookieParser from 'cookie-parser';
 
 const app: Application = express();
 
 // middlewares
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: [config.APP_URL],
+    credentials: true,
+  }),
+);
+app.use(cookieParser());
 
 // test route
 app.get('/', (req, res) => {

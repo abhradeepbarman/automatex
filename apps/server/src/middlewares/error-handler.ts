@@ -15,6 +15,8 @@ const errorHandler = (
   let message: string = 'Internal Server Error';
   let data: object | null = null;
 
+  console.error(err);
+
   if (err instanceof ZodError) {
     statusCode = 422;
     message = 'Validation Error';
