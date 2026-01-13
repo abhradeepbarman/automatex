@@ -7,11 +7,33 @@ export interface ILoginResponse {
   access_token: string;
 }
 
+export interface IRegisterResponse {
+  id: string;
+  name: string;
+  email: string;
+  access_token: string;
+}
+
 class AuthService {
   async login(email: string, password: string): Promise<ILoginResponse> {
     const { data } = await axiosInstance.post('/auth/login', {
       email,
       password,
+    });
+    return data.data;
+  }
+
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    confirmPassword: string,
+  ): Promise<IRegisterResponse> {
+    const { data } = await axiosInstance.post('/auth/register', {
+      name,
+      email,
+      password,
+      confirmPassword,
     });
     return data.data;
   }

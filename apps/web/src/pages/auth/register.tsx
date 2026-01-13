@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema } from '@repo/common/validators';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import {
   Form,
@@ -21,8 +21,15 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import authService from '@/services/auth.service';
+import { toast } from 'sonner';
+import { useAuth } from '@/context/auth-context';
 
 export default function Register() {
+  const { setUserCredentials } = useAuth();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -33,8 +40,34 @@ export default function Register() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof registerSchema>) {
-    console.log(values);
+  const { mutateAsync: userRegister } = useMutation({
+    mutationFn: (values: z.infer<typeof registerSchema>) =>
+      authService.register(
+        values.name,
+        values.email,
+        values.password,
+        values.confirmPassword
+      ),
+    onSuccess: (data) => {
+      setUserCredentials(data);
+      toast.success('Account created successfully!', {
+        description: 'Welcome to AutomateX! Redirecting to dashboard...',
+      });
+      navigate('/dashboard');
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    },
+    onError: (error: any) => {
+      console.error('Registration failed:', error);
+      toast.error('Registration failed', {
+        description:
+          error?.response?.data?.message ||
+          'Unable to create account. Please try again.',
+      });
+    },
+  });
+
+  async function onSubmit(values: z.infer<typeof registerSchema>) {
+    await userRegister(values);
   }
 
   return (

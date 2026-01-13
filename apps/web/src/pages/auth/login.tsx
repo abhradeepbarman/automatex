@@ -24,8 +24,11 @@ import {
 } from '@/components/ui/form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import authService from '@/services/auth.service';
+import { toast } from 'sonner';
+import { useAuth } from '@/context/auth-context';
 
 export default function Login() {
+  const { setUserCredentials } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const form = useForm<z.infer<typeof loginSchema>>({
@@ -40,13 +43,18 @@ export default function Login() {
     mutationFn: (values: z.infer<typeof loginSchema>) =>
       authService.login(values.email, values.password),
     onSuccess: (data) => {
-      console.log('Login successful:', data);
-      localStorage.setItem('user', JSON.stringify(data));
+      setUserCredentials(data);
+      toast.success('Login successful!', {
+        description: 'Welcome back! Redirecting to dashboard...',
+      });
       navigate('/dashboard');
       queryClient.invalidateQueries({ queryKey: ['me'] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Login failed:', error);
+      toast.error('Login failed', {
+        description: error?.response?.data?.message || 'Invalid email or password. Please try again.',
+      });
     },
   });
 

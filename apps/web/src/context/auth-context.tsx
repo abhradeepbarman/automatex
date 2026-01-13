@@ -17,8 +17,8 @@ type AuthContextType = {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (user: User) => void;
-  logout: () => void;
+  setUserCredentials: (user: User) => void;
+  removeUserCredentials: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -46,12 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const login = (user: User) => {
+  const setUserCredentials = (user: User) => {
     localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
   };
 
-  const logout = () => {
+  const removeUserCredentials = () => {
     localStorage.removeItem('user');
     setUser(null);
     window.location.href = '/login';
@@ -63,8 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated,
         loading,
-        login,
-        logout,
+        setUserCredentials,
+        removeUserCredentials,
       }}
     >
       {children}
