@@ -13,6 +13,7 @@
     "zod": "^4.3.5"
   },
   "exports": {
-    "./validators": "./src/validators/index.ts"
+    "./validators": "./src/validators/index.ts",
+    "./types": "./src/types/index.ts"
   }
 }

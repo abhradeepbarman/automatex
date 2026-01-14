@@ -1,11 +1,19 @@
 import { useAuth } from '@/context/auth-context';
-import { Navigate, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 
 const ProtectedLayout = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  useEffect(() => {
+    if (!isAuthenticated && !loading) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate, loading]);
+
+  if (loading) {
+    return null;
   }
 
   return (

@@ -1,9 +1,12 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import config from '../config';
-import { users } from './schema';
+import { stepConditions, steps, users, workflows } from './schema';
 
 const schema = {
   users,
+  workflows,
+  steps,
+  stepConditions,
 };
 
 const db = drizzle(config.DATABASE_URL, {

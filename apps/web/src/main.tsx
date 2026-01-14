@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { AuthProvider } from './context/auth-context.tsx';
 import './index.css';
 import { Toaster } from './components/ui/toaster';
+import '@xyflow/react/dist/style.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,7 +20,7 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <App />
-        <Toaster position='top-center' />
+        <Toaster position="top-center" />
       </AuthProvider>
     </BrowserRouter>
   </QueryClientProvider>,

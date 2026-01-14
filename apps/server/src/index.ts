@@ -1,9 +1,10 @@
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import express, { Application, NextFunction, Request, Response } from 'express';
 import config from './config';
-import cors from 'cors';
-import authRoutes from './routes/auth.routes';
 import errorHandler from './middlewares/error-handler';
-import cookieParser from 'cookie-parser';
+import { default as authRoutes } from './routes/auth.routes';
+import { default as workflowRoutes } from './routes/workflow.routes';
 
 const app: Application = express();
 
@@ -24,6 +25,7 @@ app.get('/', (req, res) => {
 
 // routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/workflow', workflowRoutes);
 
 // global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

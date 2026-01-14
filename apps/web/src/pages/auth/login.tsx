@@ -29,6 +29,7 @@ import { useAuth } from '@/context/auth-context';
 
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
+import type { AxiosError } from 'axios';
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -54,10 +55,12 @@ export default function Login() {
       navigate('/dashboard');
       queryClient.invalidateQueries({ queryKey: ['me'] });
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ message: string }>) => {
       console.error('Login failed:', error);
       toast.error('Login failed', {
-        description: error?.response?.data?.message || 'Invalid email or password. Please try again.',
+        description:
+          error?.response?.data?.message ||
+          'Invalid email or password. Please try again.',
       });
     },
   });
