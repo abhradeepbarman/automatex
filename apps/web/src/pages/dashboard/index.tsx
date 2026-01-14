@@ -14,11 +14,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import Navbar from '@/components/common/navbar';
 
 const Dashboard = () => {
   return (
-    <div className="min-h-screen bg-background px-6 py-8">
-      <div className="mx-auto max-w-6xl space-y-8">
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="px-6 py-8">
+        <div className="mx-auto max-w-6xl space-y-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
@@ -86,6 +89,7 @@ const Dashboard = () => {
             </Pagination>
           </div>
         </Card>
+      </div>
       </div>
     </div>
   );

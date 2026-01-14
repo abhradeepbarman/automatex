@@ -27,7 +27,11 @@ import authService from '@/services/auth.service';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/auth-context';
 
+import { Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
+
 export default function Login() {
+  const [showPassword, setShowPassword] = useState(false);
   const { setUserCredentials } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -120,12 +124,27 @@ export default function Login() {
                         </Link>
                       </div>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          autoComplete="current-password"
-                          {...field}
-                        />
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="••••••••"
+                            autoComplete="current-password"
+                            {...field}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

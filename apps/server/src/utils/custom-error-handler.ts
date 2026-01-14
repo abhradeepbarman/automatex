@@ -9,25 +9,25 @@ class CustomErrorHandler extends Error {
     Object.setPrototypeOf(this, CustomErrorHandler.prototype);
   }
 
-  static badRequest(message: string = '400 Bad Request'): CustomErrorHandler {
+  static badRequest(message: string = 'Bad request'): CustomErrorHandler {
     return new CustomErrorHandler(400, message);
   }
 
   static wrongCredentials(
-    message: string = 'Credentials are wrong!',
+    message: string = 'Invalid credentials',
   ): CustomErrorHandler {
     return new CustomErrorHandler(403, message);
   }
 
-  static unAuthorized(message: string = 'unAuthorized'): CustomErrorHandler {
+  static unAuthorized(message: string = 'Unauthorized'): CustomErrorHandler {
     return new CustomErrorHandler(401, message);
   }
 
-  static notAllowed(message: string = '403 Not Allowed'): CustomErrorHandler {
+  static notAllowed(message: string = 'Action not allowed'): CustomErrorHandler {
     return new CustomErrorHandler(403, message);
   }
 
-  static notFound(message: string = '404 Not Found'): CustomErrorHandler {
+  static notFound(message: string = 'Resource not found'): CustomErrorHandler {
     return new CustomErrorHandler(404, message);
   }
 

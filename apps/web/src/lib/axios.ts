@@ -18,7 +18,8 @@ const refreshAccessToken = async () => {
         withCredentials: true,
       },
     );
-    const { access_token } = response.data;
+    const { data } = response.data;
+    const { access_token } = data;
     const user = JSON.parse(localStorage.getItem('user') ?? '{');
     user.access_token = access_token;
     localStorage.setItem('user', JSON.stringify(user));

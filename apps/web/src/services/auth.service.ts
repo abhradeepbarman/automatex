@@ -37,6 +37,10 @@ class AuthService {
     });
     return data.data;
   }
+
+  async logout(): Promise<void> {
+    await axiosInstance.post('/auth/logout');
+  }
 }
 
 const authService = new AuthService();
