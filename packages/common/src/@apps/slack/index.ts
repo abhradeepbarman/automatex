@@ -7,6 +7,7 @@ const slack: IApp = {
   description: 'connect to your Slack account',
   icon: '',
   triggers,
+  actions: [],
 };
 
 export default slack;

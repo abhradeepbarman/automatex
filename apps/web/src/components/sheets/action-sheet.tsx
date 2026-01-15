@@ -15,7 +15,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '../ui/sheet';
 import {
   Select,
@@ -30,64 +29,80 @@ import DynamicForm from '../common/dynamic-form';
 import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import type { Node } from '@xyflow/react';
 
-interface ITriggerSheetProps {
+interface IActionSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   setNodes: Dispatch<SetStateAction<Node[]>>;
+  sourceNodeId: string;
 }
 
-const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
+const ActionSheet = ({
+  open,
+  onOpenChange,
+  setNodes,
+  sourceNodeId,
+}: IActionSheetProps) => {
   const form = useForm({
     defaultValues: {
       appId: '',
-      triggerId: '',
+      actionId: '',
     },
   });
-  const [appId, triggerId] = useWatch({
+  const [appId, actionId] = useWatch({
     control: form.control,
-    name: ['appId', 'triggerId'],
+    name: ['appId', 'actionId'],
   });
 
-  const selectedTrigger = useMemo(() => {
-    if (!appId || !triggerId) return null;
+  const selectedAction = useMemo(() => {
+    if (!appId || !actionId) return null;
     const app = apps.find((app) => app.id === appId);
-    return app?.triggers.find((trigger) => trigger.id === triggerId);
-  }, [appId, triggerId]);
+    return app?.actions.find((action) => action.id === actionId);
+  }, [appId, actionId]);
 
   const onSubmit = (fieldData: any) => {
-    const triggerData = {
+    const actionData = {
       appId,
-      triggerId,
+      actionId,
       fields: fieldData,
     };
-    console.log('Trigger configuration:', triggerData);
-    setNodes((prev) => [
-      ...prev,
-      {
-        id: `trigger-${Date.now()}`,
-        type: 'triggerNode',
-        position: { x: 0, y: 0 },
-        data: {
-          ...triggerData,
+
+    setNodes((prev) => {
+      const sourceNode = prev.find((node) => node.id === sourceNodeId);
+      const newX = sourceNode ? sourceNode.position.x + 350 : 350;
+      const newY = sourceNode ? sourceNode.position.y : 0;
+
+      return [
+        ...prev,
+        {
+          id: `action-${Date.now()}`,
+          type: 'actionNode',
+          position: { x: newX, y: newY },
+          data: {
+            ...actionData,
+          },
         },
-      },
-    ]);
+      ];
+    });
+
+    onOpenChange(false);
+    form.reset();
   };
 
   return (
     <Sheet
-      onOpenChange={(open) => {
-        if (!open) {
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
           form.reset();
         }
+        onOpenChange(isOpen);
       }}
     >
-      <SheetTrigger asChild>
-        <Button>Add trigger</Button>
-      </SheetTrigger>
       <SheetContent className="overflow-y-auto pb-5">
         <SheetHeader>
-          <SheetTitle>Add trigger</SheetTitle>
+          <SheetTitle>Add action</SheetTitle>
           <SheetDescription>
-            Choose a trigger to add to your workflow
+            Choose an action to add to your workflow
           </SheetDescription>
         </SheetHeader>
 
@@ -103,7 +118,7 @@ const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
                     <Select
                       onValueChange={(value) => {
                         field.onChange(value);
-                        form.setValue('triggerId', '');
+                        form.setValue('actionId', '');
                       }}
                       {...form.register('appId', {
                         required: {
@@ -119,7 +134,7 @@ const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
                       </FormControl>
                       <SelectContent>
                         {apps
-                          .filter((app) => app.triggers.length > 0)
+                          .filter((app) => app.actions.length > 0)
                           .map((app) => (
                             <SelectItem key={app.id} value={app.id}>
                               {app.name}
@@ -134,30 +149,30 @@ const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
               {appId && (
                 <FormField
                   control={form.control}
-                  name="triggerId"
+                  name="actionId"
                   render={({ field }) => (
                     <FormItem>
-                      <Label>Choose an trigger</Label>
+                      <Label>Choose an action</Label>
                       <Select
                         onValueChange={field.onChange}
-                        {...form.register('triggerId', {
+                        {...form.register('actionId', {
                           required: {
                             value: true,
-                            message: 'Please select a trigger',
+                            message: 'Please select an action',
                           },
                         })}
                       >
                         <FormControl>
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a trigger" />
+                            <SelectValue placeholder="Select an action" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {apps
                             .find((app) => app.id === appId)
-                            ?.triggers.map((trigger) => (
-                              <SelectItem key={trigger.id} value={trigger.id}>
-                                {trigger.name}
+                            ?.actions.map((action) => (
+                              <SelectItem key={action.id} value={action.id}>
+                                {action.name}
                               </SelectItem>
                             ))}
                         </SelectContent>
@@ -171,12 +186,12 @@ const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
           </Form>
 
           {/* Connection */}
-          {selectedTrigger && (
+          {selectedAction && (
             <div className="mt-6">
               <div className="mb-4">
                 <h3 className="text-sm font-medium">App connection</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Connect your account to use this trigger
+                  Connect your account to use this action
                 </p>
                 <Button
                   variant="outline"
@@ -193,24 +208,24 @@ const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
           )}
 
           {/* Configure */}
-          {selectedTrigger && selectedTrigger.fields.length > 0 && (
+          {selectedAction && selectedAction.fields.length > 0 && (
             <div className="mt-6">
               <div className="mb-4">
-                <h3 className="text-sm font-medium">Configure trigger</h3>
+                <h3 className="text-sm font-medium">Configure action</h3>
                 <p className="text-sm text-muted-foreground">
-                  {selectedTrigger.description}
+                  {selectedAction.description}
                 </p>
               </div>
               <DynamicForm
-                fields={selectedTrigger.fields}
+                fields={selectedAction.fields}
                 onSubmit={onSubmit}
-                submitLabel="Add trigger"
+                submitLabel="Add action"
               />
             </div>
           )}
         </div>
 
-        {!selectedTrigger && (
+        {!selectedAction && (
           <SheetFooter>
             <SheetClose asChild>
               <Button variant="outline">Close</Button>
@@ -222,4 +237,4 @@ const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
   );
 };
 
-export default TriggerSheet;
+export default ActionSheet;

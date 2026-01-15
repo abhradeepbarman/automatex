@@ -7,6 +7,7 @@ const gmail: IApp = {
   description: 'connect to your Gmail account',
   icon: '',
   triggers,
+  actions: [],
 };
 
 export default gmail;

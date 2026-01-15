@@ -14,24 +14,23 @@ export enum StepType {
   ACTION = 'ACTION',
 }
 
-export type FieldType = 'text' | 'select' | 'number' | 'date';
-
-export interface BaseField<TType extends FieldType = FieldType> {
+export type FieldConfig = {
   name: string;
   label: string;
-  type: TType;
-  required?: boolean;
-  disabled?: boolean;
-  defaultValue?: string;
-}
-export interface SelectOption<T = string> {
-  value: T;
-  label: string;
-}
-
-export interface SelectField<TValue = string> extends BaseField<'select'> {
-  selectOptions: SelectOption<TValue>[];
-}
+  type:
+    | 'text'
+    | 'email'
+    | 'number'
+    | 'select'
+    | 'textarea'
+    | 'checkbox'
+    | 'date';
+  placeholder?: string;
+  description?: string;
+  options?: { label: string; value: string }[];
+  validations?: () => any;
+  defaultValue?: any;
+};
 
 export interface IApp {
   id: string;
@@ -39,13 +38,19 @@ export interface IApp {
   description: string;
   icon?: string;
   triggers: ITrigger[];
+  actions: IAction[];
 }
 
 export interface ITrigger {
   id: string;
   name: string;
   description: string;
-  field: SelectField;
-  operator: SelectField<ConditionOperator>;
-  value: BaseField<'text'>;
+  fields: FieldConfig[];
+}
+
+export interface IAction {
+  id: string;
+  name: string;
+  description: string;
+  fields: FieldConfig[];
 }
