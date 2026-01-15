@@ -15,7 +15,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '../ui/sheet';
 import {
   Select,
@@ -31,10 +30,12 @@ import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import type { Node } from '@xyflow/react';
 
 interface ITriggerSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   setNodes: Dispatch<SetStateAction<Node[]>>;
 }
 
-const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
+const TriggerSheet = ({ open, onOpenChange, setNodes }: ITriggerSheetProps) => {
   const form = useForm({
     defaultValues: {
       appId: '',
@@ -58,31 +59,33 @@ const TriggerSheet = ({ setNodes }: ITriggerSheetProps) => {
       triggerId,
       fields: fieldData,
     };
-    console.log('Trigger configuration:', triggerData);
+
     setNodes((prev) => [
       ...prev,
       {
         id: `trigger-${Date.now()}`,
         type: 'triggerNode',
-        position: { x: 0, y: 0 },
+        position: { x: 100, y: 100 },
         data: {
           ...triggerData,
         },
       },
     ]);
+
+    onOpenChange(false);
+    form.reset();
   };
 
   return (
     <Sheet
-      onOpenChange={(open) => {
-        if (!open) {
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
           form.reset();
         }
+        onOpenChange(isOpen);
       }}
     >
-      <SheetTrigger asChild>
-        <Button>Add trigger</Button>
-      </SheetTrigger>
       <SheetContent className="overflow-y-auto pb-5">
         <SheetHeader>
           <SheetTitle>Add trigger</SheetTitle>
