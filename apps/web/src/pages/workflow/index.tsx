@@ -19,9 +19,11 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useState } from 'react';
+import ActionNode from '@/components/nodes/action-node';
 
 const nodeTypes = {
   triggerNode: TriggerNode,
+  actionNode: ActionNode,
   addTriggerButton: AddTriggerButtonNode,
   addActionButton: AddActionButtonNode,
 };
@@ -45,16 +47,16 @@ export default function Workflow() {
   const onNodesChange: OnNodesChange = useCallback(
     (changes) =>
       setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
-    [],
+    [setNodes],
   );
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) =>
       setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
-    [],
+    [setEdges],
   );
   const onConnect: OnConnect = useCallback(
     (params) => setEdges((edgesSnapshot) => addEdge(params, edgesSnapshot)),
-    [],
+    [setEdges],
   );
 
   useEffect(() => {
