@@ -1,26 +1,27 @@
-import { useState, useCallback } from 'react';
+import TriggerSheet from '@/components/sheets/trigger-sheet';
 import {
   ReactFlow,
-  applyNodeChanges,
-  applyEdgeChanges,
   addEdge,
-  type Node,
+  applyEdgeChanges,
+  applyNodeChanges,
   type Edge,
-  type OnNodesChange,
-  type OnEdgesChange,
+  type Node,
   type OnConnect,
+  type OnEdgesChange,
+  type OnNodesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useCallback, useState } from 'react';
 
-const initialNodes = [
-  { id: 'n1', position: { x: 0, y: 0 }, data: { label: 'Node 1' } },
-  { id: 'n2', position: { x: 0, y: 100 }, data: { label: 'Node 2' } },
-];
-const initialEdges = [{ id: 'n1-n2', source: 'n1', target: 'n2' }];
+// const initialNodes = [
+//   { id: 'n1', position: { x: 0, y: 0 }, data: { label: 'Node 1' } },
+//   { id: 'n2', position: { x: 0, y: 100 }, data: { label: 'Node 2' } },
+// ];
+// const initialEdges = [{ id: 'n1-n2', source: 'n1', target: 'n2' }];
 
 export default function Workflow() {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) =>
@@ -38,15 +39,19 @@ export default function Workflow() {
   );
 
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        fitView
-      />
+    <div className="w-screen h-screen flex justify-center items-center">
+      {!nodes.length ? (
+        <TriggerSheet />
+      ) : (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          fitView
+        />
+      )}
     </div>
   );
 }

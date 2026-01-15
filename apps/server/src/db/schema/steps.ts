@@ -9,6 +9,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { stepConditions } from './step-conditions';
 import { workflows } from './workflows';
+import { StepType } from '@repo/common/types';
 
 export const steps = pgTable('steps', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
@@ -18,6 +19,9 @@ export const steps = pgTable('steps', {
       onUpdate: 'no action',
     })
     .notNull(),
+  type: varchar('type', {
+    enum: [StepType.TRIGGER, StepType.ACTION],
+  }).notNull(),
   index: integer('index').notNull(),
   appName: varchar('app_name').notNull(),
   metadata: jsonb('metadata').notNull(),
