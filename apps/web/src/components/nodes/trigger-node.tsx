@@ -18,7 +18,7 @@ const TriggerNode = ({ data }: NodeProps<ITriggerNodeData>) => {
     ?.triggers.filter((trigger) => trigger.id === data.triggerId)[0];
 
   return (
-    <div className="relative min-w-[260px] rounded-md border bg-card shadow-sm">
+    <div className="relative min-w-65 rounded-md border bg-card shadow-sm">
       {/* Header */}
       <div className="px-3 py-2 border-b bg-muted/20">
         <p className="text-sm font-medium">
@@ -53,7 +53,7 @@ const TriggerNode = ({ data }: NodeProps<ITriggerNodeData>) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="!h-2.5 !w-2.5 !bg-primary"
+        className="h-2.5! w-2.5! bg-primary!"
       />
     </div>
   );

@@ -15,7 +15,7 @@ const AddActionButtonNode = ({ data }: AddActionButtonNodeProps) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="!h-2.5 !w-2.5 !bg-primary"
+        className="h-2.5! w-2.5! bg-primary!"
       />
 
       <Button

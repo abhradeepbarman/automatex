@@ -27,15 +27,25 @@ import apps from '@repo/common/@apps';
 import { Label } from '../ui/label';
 import DynamicForm from '../common/dynamic-form';
 import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import type { Node } from '@xyflow/react';
+import type { Edge, Node } from '@xyflow/react';
 
 interface ITriggerSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setNodes: Dispatch<SetStateAction<Node[]>>;
+  setEdges: Dispatch<SetStateAction<Edge[]>>;
+  setSelectedSourceNodeId: Dispatch<SetStateAction<string>>;
+  setActionSheetOpen: Dispatch<SetStateAction<boolean>>;
 }
 
-const TriggerSheet = ({ open, onOpenChange, setNodes }: ITriggerSheetProps) => {
+const TriggerSheet = ({
+  open,
+  onOpenChange,
+  setNodes,
+  setEdges,
+  setSelectedSourceNodeId,
+  setActionSheetOpen,
+}: ITriggerSheetProps) => {
   const form = useForm({
     defaultValues: {
       appId: '',
@@ -54,21 +64,49 @@ const TriggerSheet = ({ open, onOpenChange, setNodes }: ITriggerSheetProps) => {
   }, [appId, triggerId]);
 
   const onSubmit = (fieldData: any) => {
+    if (!appId || !triggerId) {
+      console.error('Missing app or trigger selection');
+      return;
+    }
+
     const triggerData = {
       appId,
       triggerId,
-      fields: fieldData,
+      fields: fieldData || {},
     };
 
+    const triggerNodeId = `trigger-${Date.now()}`;
+    const addActionButtonId = `add-action-${triggerNodeId}`;
+
     setNodes((prev) => [
-      ...prev,
+      ...prev.filter((n) => n.type !== 'addTriggerButton'),
       {
-        id: `trigger-${Date.now()}`,
+        id: triggerNodeId,
         type: 'triggerNode',
-        position: { x: 100, y: 100 },
+        position: { x: 0, y: 0 },
         data: {
           ...triggerData,
         },
+      },
+      {
+        id: addActionButtonId,
+        type: 'addActionButton',
+        position: { x: 350, y: 0 },
+        data: {
+          onAddClick: () => {
+            setSelectedSourceNodeId(triggerNodeId);
+            setActionSheetOpen(true);
+          },
+        },
+      },
+    ]);
+
+    setEdges((prev) => [
+      ...prev,
+      {
+        id: `${triggerNodeId}-${addActionButtonId}`,
+        source: triggerNodeId,
+        target: addActionButtonId,
       },
     ]);
 
@@ -209,6 +247,15 @@ const TriggerSheet = ({ open, onOpenChange, setNodes }: ITriggerSheetProps) => {
                 onSubmit={onSubmit}
                 submitLabel="Add trigger"
               />
+            </div>
+          )}
+
+          {/* Submit button for triggers with no fields */}
+          {selectedTrigger && selectedTrigger.fields.length === 0 && (
+            <div className="mt-6">
+              <Button onClick={() => onSubmit({})} className="w-full">
+                Add trigger
+              </Button>
             </div>
           )}
         </div>

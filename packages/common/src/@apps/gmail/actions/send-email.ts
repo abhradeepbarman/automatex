@@ -1,5 +1,5 @@
 import z from 'zod';
-import { ITrigger } from '../../../types';
+import { type ITrigger } from '../../../types';
 
 export const sendEmail: ITrigger = {
   id: 'SEND_EMAIL',

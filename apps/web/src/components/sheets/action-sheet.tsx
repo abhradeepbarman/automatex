@@ -27,20 +27,26 @@ import apps from '@repo/common/@apps';
 import { Label } from '../ui/label';
 import DynamicForm from '../common/dynamic-form';
 import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import type { Node } from '@xyflow/react';
+import type { Edge, Node } from '@xyflow/react';
 
 interface IActionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setNodes: Dispatch<SetStateAction<Node[]>>;
+  setEdges: Dispatch<SetStateAction<Edge[]>>;
   sourceNodeId: string;
+  setSelectedSourceNodeId: Dispatch<SetStateAction<string>>;
+  setActionSheetOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const ActionSheet = ({
   open,
   onOpenChange,
   setNodes,
+  setEdges,
   sourceNodeId,
+  setSelectedSourceNodeId,
+  setActionSheetOpen,
 }: IActionSheetProps) => {
   const form = useForm({
     defaultValues: {
@@ -60,26 +66,74 @@ const ActionSheet = ({
   }, [appId, actionId]);
 
   const onSubmit = (fieldData: any) => {
+    if (!appId || !actionId || !sourceNodeId) {
+      console.error('Missing app, action, or source node');
+      return;
+    }
+
     const actionData = {
       appId,
       actionId,
-      fields: fieldData,
+      fields: fieldData || {},
     };
+
+    const actionNodeId = `action-${Date.now()}`;
+    const addActionButtonId = `add-action-${actionNodeId}`;
 
     setNodes((prev) => {
       const sourceNode = prev.find((node) => node.id === sourceNodeId);
-      const newX = sourceNode ? sourceNode.position.x + 350 : 350;
-      const newY = sourceNode ? sourceNode.position.y : 0;
+
+      if (!sourceNode) {
+        console.error('Source node not found:', sourceNodeId);
+        return prev;
+      }
+
+      const newX = sourceNode.position.x + 350;
+      const newY = sourceNode.position.y;
+
+      // Find and remove the specific add-action button connected to source
+      const oldButtonId = `add-action-${sourceNodeId}`;
+      const filteredNodes = prev.filter((n) => n.id !== oldButtonId);
 
       return [
-        ...prev,
+        ...filteredNodes,
         {
-          id: `action-${Date.now()}`,
+          id: actionNodeId,
           type: 'actionNode',
           position: { x: newX, y: newY },
           data: {
             ...actionData,
           },
+        },
+        {
+          id: addActionButtonId,
+          type: 'addActionButton',
+          position: { x: newX + 350, y: newY },
+          data: {
+            onAddClick: () => {
+              setSelectedSourceNodeId(actionNodeId);
+              setActionSheetOpen(true);
+            },
+          },
+        },
+      ];
+    });
+
+    setEdges((prev) => {
+      const oldButtonId = `add-action-${sourceNodeId}`;
+      const filteredEdges = prev.filter((e) => e.target !== oldButtonId);
+
+      return [
+        ...filteredEdges,
+        {
+          id: `${sourceNodeId}-${actionNodeId}`,
+          source: sourceNodeId,
+          target: actionNodeId,
+        },
+        {
+          id: `${actionNodeId}-${addActionButtonId}`,
+          source: actionNodeId,
+          target: addActionButtonId,
         },
       ];
     });
@@ -221,6 +275,15 @@ const ActionSheet = ({
                 onSubmit={onSubmit}
                 submitLabel="Add action"
               />
+            </div>
+          )}
+
+          {/* Submit button for actions with no fields */}
+          {selectedAction && selectedAction.fields.length === 0 && (
+            <div className="mt-6">
+              <Button onClick={() => onSubmit({})} className="w-full">
+                Add action
+              </Button>
             </div>
           )}
         </div>

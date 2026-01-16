@@ -1,25 +1,23 @@
-import TriggerNode from '@/components/nodes/trigger-node';
-import AddTriggerButtonNode from '@/components/nodes/add-trigger-button-node';
+import ActionNode from '@/components/nodes/action-node';
 import AddActionButtonNode from '@/components/nodes/add-action-button-node';
-import TriggerSheet from '@/components/sheets/trigger-sheet';
+import AddTriggerButtonNode from '@/components/nodes/add-trigger-button-node';
+import TriggerNode from '@/components/nodes/trigger-node';
 import ActionSheet from '@/components/sheets/action-sheet';
+import TriggerSheet from '@/components/sheets/trigger-sheet';
 import {
   Background,
   Controls,
   MiniMap,
   ReactFlow,
-  addEdge,
   applyEdgeChanges,
   applyNodeChanges,
   type Edge,
   type Node,
-  type OnConnect,
   type OnEdgesChange,
   type OnNodesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useEffect, useState } from 'react';
-import ActionNode from '@/components/nodes/action-node';
+import { useCallback, useState } from 'react';
 
 const nodeTypes = {
   triggerNode: TriggerNode,
@@ -54,135 +52,10 @@ export default function Workflow() {
       setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
     [setEdges],
   );
-  const onConnect: OnConnect = useCallback(
-    (params) => setEdges((edgesSnapshot) => addEdge(params, edgesSnapshot)),
-    [setEdges],
-  );
-
-  useEffect(() => {
-    const triggerNodes = nodes.filter((n) => n.type === 'triggerNode');
-    const addTriggerButtons = nodes.filter(
-      (n) => n.type === 'addTriggerButton',
-    );
-
-    // If we have a trigger node and still have the add trigger button, remove it
-    if (triggerNodes.length > 0 && addTriggerButtons.length > 0) {
-      setNodes((prev) => prev.filter((n) => n.type !== 'addTriggerButton'));
-    }
-
-    // Add "Add Action" button after trigger node if it doesn't exist
-    if (triggerNodes.length > 0) {
-      const lastTrigger = triggerNodes[triggerNodes.length - 1];
-      const hasActionButton = nodes.some(
-        (n) =>
-          n.type === 'addActionButton' &&
-          edges.some((e) => e.source === lastTrigger.id && e.target === n.id),
-      );
-
-      if (!hasActionButton) {
-        const buttonId = `add-action-${lastTrigger.id}`;
-
-        setNodes((prev) => [
-          ...prev,
-          {
-            id: buttonId,
-            type: 'addActionButton',
-            position: {
-              x: lastTrigger.position.x + 350,
-              y: lastTrigger.position.y,
-            },
-            data: {
-              onAddClick: () => {
-                setSelectedSourceNodeId(lastTrigger.id);
-                setActionSheetOpen(true);
-              },
-            },
-          },
-        ]);
-
-        setEdges((prev) => [
-          ...prev,
-          {
-            id: `edge-${lastTrigger.id}-${buttonId}`,
-            source: lastTrigger.id,
-            target: buttonId,
-          },
-        ]);
-      }
-    }
-  }, [nodes.filter((n) => n.type === 'triggerNode').length]);
-
-  useEffect(() => {
-    const actionNodes = nodes.filter((n) => n.type === 'actionNode');
-
-    if (actionNodes.length > 0 && selectedSourceNodeId) {
-      const lastAction = actionNodes[actionNodes.length - 1];
-
-      // Find and remove the button node that was connected to the source
-      const buttonToRemove = nodes.find(
-        (n) =>
-          n.type === 'addActionButton' &&
-          edges.some(
-            (e) => e.source === selectedSourceNodeId && e.target === n.id,
-          ),
-      );
-
-      if (buttonToRemove) {
-        setNodes((prev) => prev.filter((n) => n.id !== buttonToRemove.id));
-
-        setEdges((prev) => prev.filter((e) => e.target !== buttonToRemove.id));
-
-        const edgeExists = edges.some(
-          (e) =>
-            e.source === selectedSourceNodeId && e.target === lastAction.id,
-        );
-
-        if (!edgeExists) {
-          setEdges((prev) => [
-            ...prev,
-            {
-              id: `edge-${selectedSourceNodeId}-${lastAction.id}`,
-              source: selectedSourceNodeId,
-              target: lastAction.id,
-            },
-          ]);
-        }
-
-        // Add new "Add Action" button after the action node
-        const newButtonId = `add-action-${lastAction.id}`;
-        const buttonExists = nodes.some((n) => n.id === newButtonId);
-
-        if (!buttonExists) {
-          setNodes((prev) => [
-            ...prev,
-            {
-              id: newButtonId,
-              type: 'addActionButton',
-              position: {
-                x: lastAction.position.x + 350,
-                y: lastAction.position.y,
-              },
-              data: {
-                onAddClick: () => {
-                  setSelectedSourceNodeId(lastAction.id);
-                  setActionSheetOpen(true);
-                },
-              },
-            },
-          ]);
-
-          setEdges((prev) => [
-            ...prev,
-            {
-              id: `edge-${lastAction.id}-${newButtonId}`,
-              source: lastAction.id,
-              target: newButtonId,
-            },
-          ]);
-        }
-      }
-    }
-  }, [nodes.filter((n) => n.type === 'actionNode').length]);
+  // const onConnect: OnConnect = useCallback(
+  //   (params) => setEdges((edgesSnapshot) => addEdge(params, edgesSnapshot)),
+  //   [setEdges],
+  // );
 
   return (
     <div className="w-screen h-screen flex justify-center items-center">
@@ -192,7 +65,7 @@ export default function Workflow() {
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        // onConnect={onConnect}
         fitView
       >
         <MiniMap />
@@ -204,13 +77,19 @@ export default function Workflow() {
         open={triggerSheetOpen}
         onOpenChange={setTriggerSheetOpen}
         setNodes={setNodes}
+        setEdges={setEdges}
+        setSelectedSourceNodeId={setSelectedSourceNodeId}
+        setActionSheetOpen={setActionSheetOpen}
       />
 
       <ActionSheet
         open={actionSheetOpen}
         onOpenChange={setActionSheetOpen}
         setNodes={setNodes}
+        setEdges={setEdges}
         sourceNodeId={selectedSourceNodeId}
+        setSelectedSourceNodeId={setSelectedSourceNodeId}
+        setActionSheetOpen={setActionSheetOpen}
       />
     </div>
   );
