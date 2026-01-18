@@ -6,6 +6,8 @@ const newMessage: ITrigger = {
   name: 'New message',
   description: 'Triggered when a new message is received',
 
+  scopes: ['chat:write:bot', 'chat:write:user'],
+
   fields: [
     {
       name: 'field',

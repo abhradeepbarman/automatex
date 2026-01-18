@@ -5,7 +5,7 @@ import {
   userLogout,
   userRegister,
 } from '../controllers/auth.controller';
-import auth from '../middlewares/auth';
+import { auth } from '@repo/server-common/middlewares';
 
 const router: Router = Router();
 

@@ -1,14 +1,14 @@
 import { NextFunction, Request, Response } from 'express';
-import asyncHandler from '../utils/async-handler';
-import CustomErrorHandler from '../utils/custom-error-handler';
+import { asyncHandler } from '@repo/server-common/utils';
+import { CustomErrorHandler } from '@repo/server-common/utils';
 import db from '../db';
 import { loginSchema, registerSchema } from '@repo/common/validators';
 import { and, eq } from 'drizzle-orm';
 import { users } from '../db/schema';
 import bcrypt from 'bcryptjs';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import config from '../config';
-import ResponseHandler from '../utils/response-handler';
+import config from '@repo/server-common/config';
+import { ResponseHandler } from '@repo/server-common/utils';
 
 export const generateTokens = (userId: string) => {
   const accessToken = jwt.sign({ id: userId }, config.ACCESS_SECRET, {

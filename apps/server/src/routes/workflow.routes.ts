@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import auth from '../middlewares/auth';
+import { auth } from '@repo/server-common/middlewares';
 import {
   createWorkflow,
   deleteWorkflow,

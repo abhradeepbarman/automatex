@@ -60,7 +60,6 @@ const DynamicForm = ({
     resolver: zodResolver(schema),
     defaultValues,
   });
-
   const renderField = (field: FieldConfig) => {
     switch (field.type) {
       case 'text':

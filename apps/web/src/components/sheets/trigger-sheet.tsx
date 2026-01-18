@@ -1,4 +1,11 @@
+import apps from '@repo/common/@apps';
+import { StepType } from '@repo/common/types';
+
+import type { Edge, Node } from '@xyflow/react';
+import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import DynamicForm from '../common/dynamic-form';
+import ConnectBtn from '../common/connect-btn';
 import { Button } from '../ui/button';
 import {
   Form,
@@ -7,6 +14,14 @@ import {
   FormItem,
   FormMessage,
 } from '../ui/form';
+import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import {
   Sheet,
   SheetClose,
@@ -16,18 +31,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '../ui/sheet';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import apps from '@repo/common/@apps';
-import { Label } from '../ui/label';
-import DynamicForm from '../common/dynamic-form';
-import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import type { Edge, Node } from '@xyflow/react';
+import z from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 interface ITriggerSheetProps {
   open: boolean;
@@ -46,15 +51,37 @@ const TriggerSheet = ({
   setSelectedSourceNodeId,
   setActionSheetOpen,
 }: ITriggerSheetProps) => {
+  const triggerSheetSchema = z.object({
+    appId: z.string().min(1, 'Please select an app'),
+    triggerId: z.string().min(1, 'Please select a trigger'),
+    auth: z.object({
+      accessToken: z.string().min(1, 'Connection is required'),
+      refreshToken: z.string().optional(),
+      expiresIn: z.number().optional(),
+    }),
+  });
+
   const form = useForm({
+    resolver: zodResolver(triggerSheetSchema),
     defaultValues: {
       appId: '',
       triggerId: '',
+      auth: {
+        accessToken: '',
+        refreshToken: '',
+        expiresIn: 0,
+      },
     },
   });
+
   const [appId, triggerId] = useWatch({
     control: form.control,
     name: ['appId', 'triggerId'],
+  });
+
+  const [accessToken] = useWatch({
+    control: form.control,
+    name: ['auth.accessToken'],
   });
 
   const selectedTrigger = useMemo(() => {
@@ -63,15 +90,23 @@ const TriggerSheet = ({
     return app?.triggers.find((trigger) => trigger.id === triggerId);
   }, [appId, triggerId]);
 
-  const onSubmit = (fieldData: any) => {
-    if (!appId || !triggerId) {
+  const onSubmit = async (fieldData: any) => {
+    const formData = form.getValues();
+
+    if (!formData.appId || !formData.triggerId) {
       console.error('Missing app or trigger selection');
       return;
     }
 
+    if (!formData.auth.accessToken) {
+      console.error('Missing authentication');
+      return;
+    }
+
     const triggerData = {
-      appId,
-      triggerId,
+      appId: formData.appId,
+      triggerId: formData.triggerId,
+      auth: formData.auth,
       fields: fieldData || {},
     };
 
@@ -146,12 +181,7 @@ const TriggerSheet = ({
                         field.onChange(value);
                         form.setValue('triggerId', '');
                       }}
-                      {...form.register('appId', {
-                        required: {
-                          value: true,
-                          message: 'Please select an app',
-                        },
-                      })}
+                      {...form.register('appId')}
                     >
                       <FormControl>
                         <SelectTrigger className="w-full">
@@ -181,12 +211,7 @@ const TriggerSheet = ({
                       <Label>Choose an trigger</Label>
                       <Select
                         onValueChange={field.onChange}
-                        {...form.register('triggerId', {
-                          required: {
-                            value: true,
-                            message: 'Please select a trigger',
-                          },
-                        })}
+                        {...form.register('triggerId')}
                       >
                         <FormControl>
                           <SelectTrigger className="w-full">
@@ -208,30 +233,70 @@ const TriggerSheet = ({
                   )}
                 />
               )}
+
+              {/* Connection */}
+              {selectedTrigger && (
+                <FormField
+                  control={form.control}
+                  name="auth.accessToken"
+                  render={({ fieldState }) => (
+                    <FormItem>
+                      <div className="mt-6">
+                        <div className="mb-4">
+                          <h3 className="text-sm font-medium">
+                            App connection
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Connect your account to use this trigger
+                          </p>
+                          {!accessToken ? (
+                            <ConnectBtn
+                              appId={appId}
+                              stepType={StepType.TRIGGER}
+                              stepId={triggerId}
+                              onAuthSuccess={(authData) => {
+                                form.setValue(
+                                  'auth.accessToken',
+                                  authData.accessToken,
+                                );
+                                form.setValue(
+                                  'auth.refreshToken',
+                                  authData.refreshToken || '',
+                                );
+                                form.setValue(
+                                  'auth.expiresIn',
+                                  authData.expiresIn || 0,
+                                );
+                              }}
+                            />
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                form.setValue('auth.accessToken', '', {
+                                  shouldValidate: true,
+                                });
+                                form.setValue('auth.refreshToken', '');
+                                form.setValue('auth.expiresIn', 0);
+                              }}
+                            >
+                              Disconnect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {fieldState.error && (
+                        <p className="text-sm text-destructive">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              )}
             </form>
           </Form>
-
-          {/* Connection */}
-          {selectedTrigger && (
-            <div className="mt-6">
-              <div className="mb-4">
-                <h3 className="text-sm font-medium">App connection</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Connect your account to use this trigger
-                </p>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    // TODO: Implement OAuth flow
-                    console.log('Connect app clicked for:', appId);
-                  }}
-                >
-                  Connect app
-                </Button>
-              </div>
-            </div>
-          )}
 
           {/* Configure */}
           {selectedTrigger && selectedTrigger.fields.length > 0 && (
@@ -250,10 +315,9 @@ const TriggerSheet = ({
             </div>
           )}
 
-          {/* Submit button for triggers with no fields */}
           {selectedTrigger && selectedTrigger.fields.length === 0 && (
             <div className="mt-6">
-              <Button onClick={() => onSubmit({})} className="w-full">
+              <Button onClick={onSubmit} className="w-full">
                 Add trigger
               </Button>
             </div>

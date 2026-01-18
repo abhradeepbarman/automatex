@@ -32,11 +32,17 @@ export type FieldConfig = {
   defaultValue?: any;
 };
 
+export enum AppType {
+  GMAIL = 'GMAIL',
+  SLACK = 'SLACK',
+}
+
 export interface IApp {
-  id: string;
+  id: AppType;
   name: string;
   description: string;
   icon?: string;
+  auth: IAuth;
   triggers: ITrigger[];
   actions: IAction[];
 }
@@ -45,6 +51,7 @@ export interface ITrigger {
   id: string;
   name: string;
   description: string;
+  scopes: string[];
   fields: FieldConfig[];
 }
 
@@ -52,5 +59,11 @@ export interface IAction {
   id: string;
   name: string;
   description: string;
+  scopes: string[];
   fields: FieldConfig[];
+}
+
+export interface IAuth {
+  redirectUrl: string;
+  tokenUrl: string;
 }

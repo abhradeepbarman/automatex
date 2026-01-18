@@ -5,6 +5,9 @@ export const sendEmail: ITrigger = {
   id: 'SEND_EMAIL',
   name: 'Send email',
   description: 'Send an email to a recipient',
+
+  scopes: ['https://mail.google.com/'],
+
   fields: [
     {
       name: 'to',

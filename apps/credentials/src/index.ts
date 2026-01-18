@@ -1,10 +1,9 @@
-import cookieParser from 'cookie-parser';
-import cors from 'cors';
-import express, { Application, NextFunction, Request, Response } from 'express';
 import config from '@repo/server-common/config';
 import { errorHandler } from '@repo/server-common/middlewares';
-import { default as authRoutes } from './routes/auth.routes';
-import { default as workflowRoutes } from './routes/workflow.routes';
+import cors from 'cors';
+import express, { Application, NextFunction, Request, Response } from 'express';
+import { connectionRoutes as oauthRoutes } from './routes';
+import cookieParser from 'cookie-parser';
 
 const app: Application = express();
 
@@ -20,12 +19,11 @@ app.use(cookieParser());
 
 // test route
 app.get('/', (req, res) => {
-  res.send('Hello, World!');
+  res.send('Hello, World! from credentials service');
 });
 
 // routes
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/workflow', workflowRoutes);
+app.use('/api/v1/oauth', oauthRoutes);
 
 // global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
