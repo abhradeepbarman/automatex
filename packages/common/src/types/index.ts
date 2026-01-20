@@ -43,6 +43,7 @@ export interface IApp {
   description: string;
   icon?: string;
   auth: IAuth;
+  scopes: string[];
   triggers: ITrigger[];
   actions: IAction[];
 }
@@ -51,7 +52,6 @@ export interface ITrigger {
   id: string;
   name: string;
   description: string;
-  scopes: string[];
   fields: FieldConfig[];
 }
 
@@ -59,11 +59,10 @@ export interface IAction {
   id: string;
   name: string;
   description: string;
-  scopes: string[];
   fields: FieldConfig[];
 }
 
 export interface IAuth {
-  redirectUrl: string;
+  authUrl: string;
   tokenUrl: string;
 }

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { auth } from '@repo/server-common/middlewares';
 import {
   createWorkflow,
   deleteWorkflow,
@@ -7,6 +6,7 @@ import {
   getWorkflow,
   updateWorkflow,
 } from '../controllers/workflow.controller';
+import { auth } from '../middlewares';
 
 const router: Router = Router();
 

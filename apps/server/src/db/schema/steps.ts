@@ -38,8 +38,4 @@ export const stepRelations = relations(steps, ({ one }) => ({
     fields: [steps.id],
     references: [stepConditions.stepId],
   }),
-  connections: one(steps, {
-    fields: [steps.id],
-    references: [steps.id],
-  }),
 }));

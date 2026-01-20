@@ -6,8 +6,6 @@ const newEmail: ITrigger = {
   name: 'New email',
   description: 'Triggered when a new email is received',
 
-  scopes: ['https://mail.google.com/'],
-
   fields: [
     {
       name: 'field',

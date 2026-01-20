@@ -1,6 +1,5 @@
 import gmail from './gmail';
-import slack from './slack';
 
-const apps = [gmail, slack];
+const apps = [gmail];
 
 export default apps;

@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import config from '@repo/server-common/config';
 import CustomErrorHandler from '../utils/custom-error-handler';
+import config from '../config';
 
 const auth = async (req: Request, res: Response, next: NextFunction) => {
   try {

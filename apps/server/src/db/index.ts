@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
-import config from '@repo/server-common/config';
 import { connections, stepConditions, steps, users, workflows } from './schema';
+import config from '../config';
 
 const schema = {
   users,

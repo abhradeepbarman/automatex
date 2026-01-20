@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import { pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { workflows } from './workflows';
+import { connections } from './connections';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
@@ -14,4 +15,5 @@ export const users = pgTable('users', {
 
 export const userRelations = relations(users, ({ many }) => ({
   workflows: many(workflows),
+  connections: many(connections),
 }));

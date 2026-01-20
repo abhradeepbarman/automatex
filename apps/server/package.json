@@ -15,7 +15,6 @@
   "license": "ISC",
   "dependencies": {
     "@repo/common": "workspace:*",
-    "@repo/server-common": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

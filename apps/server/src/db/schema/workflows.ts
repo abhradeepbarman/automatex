@@ -25,5 +25,4 @@ export const workflowRelations = relations(workflows, ({ one, many }) => ({
     references: [users.id],
   }),
   steps: many(steps),
-  connections: many(steps),
 }));
