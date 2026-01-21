@@ -10,15 +10,15 @@ const _config = {
 
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
-  GOOGLE_REDIRECT_URL: process.env.GOOGLE_REDIRECT_URL || '',
+  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI || '',
 
   NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID || '',
   NOTION_CLIENT_SECRET: process.env.NOTION_CLIENT_SECRET || '',
-  NOTION_REDIRECT_URL: process.env.NOTION_REDIRECT_URL || '',
+  NOTION_REDIRECT_URI: process.env.NOTION_REDIRECT_URI || '',
 
   GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || '',
   GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || '',
-  GITHUB_REDIRECT_URL: process.env.GITHUB_REDIRECT_URL || '',
+  GITHUB_REDIRECT_URI: process.env.GITHUB_REDIRECT_URI || '',
 };
 
 const config = Object.freeze(_config);

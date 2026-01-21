@@ -33,8 +33,9 @@ export type FieldConfig = {
 };
 
 export enum AppType {
-  GMAIL = 'GMAIL',
-  SLACK = 'SLACK',
+  GMAIL = 'gmail',
+  NOTION = 'notion',
+  GITHUB = 'github',
 }
 
 export interface IApp {
@@ -42,10 +43,10 @@ export interface IApp {
   name: string;
   description: string;
   icon?: string;
-  auth: IAuth;
-  scopes: string[];
   triggers: ITrigger[];
   actions: IAction[];
+  getAuthUrl: () => string;
+  getTokenUrl: (code: string) => string;
 }
 
 export interface ITrigger {
@@ -60,9 +61,4 @@ export interface IAction {
   name: string;
   description: string;
   fields: FieldConfig[];
-}
-
-export interface IAuth {
-  authUrl: string;
-  tokenUrl: string;
 }

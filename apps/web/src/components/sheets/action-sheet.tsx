@@ -1,4 +1,12 @@
+import apps from '@repo/common/@apps';
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { Edge, Node } from '@xyflow/react';
+import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import z from 'zod';
+import ConnectBtn from '../common/connect-btn';
+import DynamicForm from '../common/dynamic-form';
 import { Button } from '../ui/button';
 import {
   Form,
@@ -7,6 +15,14 @@ import {
   FormItem,
   FormMessage,
 } from '../ui/form';
+import { Label } from '../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import {
   Sheet,
   SheetClose,
@@ -16,22 +32,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '../ui/sheet';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import apps from '@repo/common/@apps';
-import { Label } from '../ui/label';
-import DynamicForm from '../common/dynamic-form';
-import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import type { Edge, Node } from '@xyflow/react';
-import ConnectBtn from '../common/connect-btn';
-import { StepType } from '@repo/common/types';
-import z from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
 
 interface IActionSheetProps {
   open: boolean;
@@ -55,11 +55,7 @@ const ActionSheet = ({
   const actionSheetSchema = z.object({
     appId: z.string().min(1, 'Please select an app'),
     actionId: z.string().min(1, 'Please select an action'),
-    auth: z.object({
-      accessToken: z.string().min(1, 'Connection is required'),
-      refreshToken: z.string().optional(),
-      expiresIn: z.number().optional(),
-    }),
+    connectionId: z.string().min(1, 'Connection is required'),
   });
 
   const form = useForm({
@@ -67,11 +63,7 @@ const ActionSheet = ({
     defaultValues: {
       appId: '',
       actionId: '',
-      auth: {
-        accessToken: '',
-        refreshToken: '',
-        expiresIn: 0,
-      },
+      connectionId: '',
     },
   });
   const [appId, actionId] = useWatch({
@@ -79,9 +71,9 @@ const ActionSheet = ({
     name: ['appId', 'actionId'],
   });
 
-  const [accessToken] = useWatch({
+  const [connectionId] = useWatch({
     control: form.control,
-    name: ['auth.accessToken'],
+    name: ['connectionId'],
   });
 
   const selectedAction = useMemo(() => {
@@ -98,15 +90,15 @@ const ActionSheet = ({
       return;
     }
 
-    if (!formData.auth.accessToken) {
-      console.error('Missing authentication');
+    if (!formData.connectionId) {
+      console.error('Missing connection');
       return;
     }
 
     const actionData = {
       appId: formData.appId,
       actionId: formData.actionId,
-      auth: formData.auth,
+      connectionId: formData.connectionId,
       fields: fieldData || {},
     };
 
@@ -206,6 +198,7 @@ const ActionSheet = ({
                       onValueChange={(value) => {
                         field.onChange(value);
                         form.setValue('actionId', '');
+                        form.setValue('connectionId', '');
                       }}
                       {...form.register('appId')}
                     >
@@ -228,6 +221,51 @@ const ActionSheet = ({
                   </FormItem>
                 )}
               />
+
+              {appId && (
+                <FormField
+                  control={form.control}
+                  name="connectionId"
+                  render={({ fieldState }) => (
+                    <FormItem>
+                      <div className="mt-6">
+                        <div className="mb-4">
+                          <h3 className="text-sm font-medium">
+                            App connection
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Connect your account to use this action
+                          </p>
+                          {!connectionId ? (
+                            <ConnectBtn
+                              appId={appId}
+                              onAuthSuccess={(id: string) => {
+                                form.setValue('connectionId', id);
+                              }}
+                            />
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                form.setValue('connectionId', '');
+                              }}
+                            >
+                              Disconnect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {fieldState.error && (
+                        <p className="text-sm text-destructive">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              )}
+
               {appId && (
                 <FormField
                   control={form.control}
@@ -255,68 +293,6 @@ const ActionSheet = ({
                         </SelectContent>
                       </Select>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {/* Connection */}
-              {selectedAction && (
-                <FormField
-                  control={form.control}
-                  name="auth.accessToken"
-                  render={({ fieldState }) => (
-                    <FormItem>
-                      <div className="mt-6">
-                        <div className="mb-4">
-                          <h3 className="text-sm font-medium">
-                            App connection
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Connect your account to use this action
-                          </p>
-                          {!accessToken ? (
-                            <ConnectBtn
-                              appId={appId}
-                              stepType={StepType.ACTION}
-                              stepId={actionId}
-                              onAuthSuccess={(authData) => {
-                                form.setValue(
-                                  'auth.accessToken',
-                                  authData.accessToken,
-                                );
-                                form.setValue(
-                                  'auth.refreshToken',
-                                  authData.refreshToken || '',
-                                );
-                                form.setValue(
-                                  'auth.expiresIn',
-                                  authData.expiresIn || 0,
-                                );
-                              }}
-                            />
-                          ) : (
-                            <Button
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => {
-                                form.setValue('auth.accessToken', '', {
-                                  shouldValidate: true,
-                                });
-                                form.setValue('auth.refreshToken', '');
-                                form.setValue('auth.expiresIn', 0);
-                              }}
-                            >
-                              Disconnect
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      {fieldState.error && (
-                        <p className="text-sm text-destructive">
-                          {fieldState.error.message}
-                        </p>
-                      )}
                     </FormItem>
                   )}
                 />

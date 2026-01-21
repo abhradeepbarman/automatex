@@ -1,11 +1,12 @@
 import apps from '@repo/common/@apps';
-import { StepType } from '@repo/common/types';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import type { Edge, Node } from '@xyflow/react';
 import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import DynamicForm from '../common/dynamic-form';
+import z from 'zod';
 import ConnectBtn from '../common/connect-btn';
+import DynamicForm from '../common/dynamic-form';
 import { Button } from '../ui/button';
 import {
   Form,
@@ -31,8 +32,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '../ui/sheet';
-import z from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
 
 interface ITriggerSheetProps {
   open: boolean;
@@ -54,11 +53,7 @@ const TriggerSheet = ({
   const triggerSheetSchema = z.object({
     appId: z.string().min(1, 'Please select an app'),
     triggerId: z.string().min(1, 'Please select a trigger'),
-    auth: z.object({
-      accessToken: z.string().min(1, 'Connection is required'),
-      refreshToken: z.string().optional(),
-      expiresIn: z.number().optional(),
-    }),
+    connectionId: z.string().min(1, 'Connection is required'),
   });
 
   const form = useForm({
@@ -66,11 +61,7 @@ const TriggerSheet = ({
     defaultValues: {
       appId: '',
       triggerId: '',
-      auth: {
-        accessToken: '',
-        refreshToken: '',
-        expiresIn: 0,
-      },
+      connectionId: '',
     },
   });
 
@@ -79,9 +70,9 @@ const TriggerSheet = ({
     name: ['appId', 'triggerId'],
   });
 
-  const [accessToken] = useWatch({
+  const [connectionId] = useWatch({
     control: form.control,
-    name: ['auth.accessToken'],
+    name: ['connectionId'],
   });
 
   const selectedTrigger = useMemo(() => {
@@ -98,15 +89,15 @@ const TriggerSheet = ({
       return;
     }
 
-    if (!formData.auth.accessToken) {
-      console.error('Missing authentication');
+    if (!formData.connectionId) {
+      console.error('Missing connection');
       return;
     }
 
     const triggerData = {
       appId: formData.appId,
       triggerId: formData.triggerId,
-      auth: formData.auth,
+      connectionId: formData.connectionId,
       fields: fieldData || {},
     };
 
@@ -180,6 +171,7 @@ const TriggerSheet = ({
                       onValueChange={(value) => {
                         field.onChange(value);
                         form.setValue('triggerId', '');
+                        form.setValue('connectionId', '');
                       }}
                       {...form.register('appId')}
                     >
@@ -202,6 +194,51 @@ const TriggerSheet = ({
                   </FormItem>
                 )}
               />
+
+              {appId && (
+                <FormField
+                  control={form.control}
+                  name="connectionId"
+                  render={({ fieldState }) => (
+                    <FormItem>
+                      <div className="mt-6">
+                        <div className="mb-4">
+                          <h3 className="text-sm font-medium">
+                            App connection
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Connect your account to use this trigger
+                          </p>
+                          {!connectionId ? (
+                            <ConnectBtn
+                              appId={appId}
+                              onAuthSuccess={(id: string) => {
+                                form.setValue('connectionId', id);
+                              }}
+                            />
+                          ) : (
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => {
+                                form.setValue('connectionId', '');
+                              }}
+                            >
+                              Disconnect
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {fieldState.error && (
+                        <p className="text-sm text-destructive">
+                          {fieldState.error.message}
+                        </p>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              )}
+
               {appId && (
                 <FormField
                   control={form.control}
@@ -229,68 +266,6 @@ const TriggerSheet = ({
                         </SelectContent>
                       </Select>
                       <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {/* Connection */}
-              {selectedTrigger && (
-                <FormField
-                  control={form.control}
-                  name="auth.accessToken"
-                  render={({ fieldState }) => (
-                    <FormItem>
-                      <div className="mt-6">
-                        <div className="mb-4">
-                          <h3 className="text-sm font-medium">
-                            App connection
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Connect your account to use this trigger
-                          </p>
-                          {!accessToken ? (
-                            <ConnectBtn
-                              appId={appId}
-                              stepType={StepType.TRIGGER}
-                              stepId={triggerId}
-                              onAuthSuccess={(authData) => {
-                                form.setValue(
-                                  'auth.accessToken',
-                                  authData.accessToken,
-                                );
-                                form.setValue(
-                                  'auth.refreshToken',
-                                  authData.refreshToken || '',
-                                );
-                                form.setValue(
-                                  'auth.expiresIn',
-                                  authData.expiresIn || 0,
-                                );
-                              }}
-                            />
-                          ) : (
-                            <Button
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => {
-                                form.setValue('auth.accessToken', '', {
-                                  shouldValidate: true,
-                                });
-                                form.setValue('auth.refreshToken', '');
-                                form.setValue('auth.expiresIn', 0);
-                              }}
-                            >
-                              Disconnect
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      {fieldState.error && (
-                        <p className="text-sm text-destructive">
-                          {fieldState.error.message}
-                        </p>
-                      )}
                     </FormItem>
                   )}
                 />

@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
 // routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/workflow', workflowRoutes);
-app.use('/api/v1/credentials', credentialRoutes);
+app.use('/api/v1/credential', credentialRoutes);
 
 // global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
