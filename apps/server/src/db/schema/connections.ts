@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm';
 import { pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { users } from './users';
+import { steps } from './steps';
 
 export const connections = pgTable('connections', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
@@ -15,9 +16,10 @@ export const connections = pgTable('connections', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const connectionRelations = relations(connections, ({ one }) => ({
+export const connectionRelations = relations(connections, ({ one, many }) => ({
   user: one(users, {
     fields: [connections.userId],
     references: [users.id],
   }),
+  steps: many(steps),
 }));

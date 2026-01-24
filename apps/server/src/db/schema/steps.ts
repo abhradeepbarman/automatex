@@ -10,6 +10,7 @@ import {
 import { stepConditions } from './step-conditions';
 import { workflows } from './workflows';
 import { StepType } from '@repo/common/types';
+import { connections } from './connections';
 
 export const steps = pgTable('steps', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
@@ -25,6 +26,8 @@ export const steps = pgTable('steps', {
   index: integer('index').notNull(),
   app: varchar('app').notNull(),
   metadata: jsonb('metadata').notNull(),
+  connectionId: uuid('connection_id').references(() => connections.id),
+  lastExecutedAt: timestamp('last_executed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -37,5 +40,9 @@ export const stepRelations = relations(steps, ({ one }) => ({
   stepConditions: one(stepConditions, {
     fields: [steps.id],
     references: [stepConditions.stepId],
+  }),
+  connections: one(connections, {
+    fields: [steps.connectionId],
+    references: [connections.id],
   }),
 }));

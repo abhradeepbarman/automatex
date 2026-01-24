@@ -1,21 +1,13 @@
 import apps from '@repo/common/@apps';
-
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Edge, Node } from '@xyflow/react';
 import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import z from 'zod';
 import ConnectBtn from '../common/connect-btn';
 import DynamicForm from '../common/dynamic-form';
 import { Button } from '../ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from '../ui/form';
-import { Label } from '../ui/label';
+import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
 import {
   Select,
   SelectContent,
@@ -25,10 +17,8 @@ import {
 } from '../ui/select';
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '../ui/sheet';
@@ -66,6 +56,7 @@ const ActionSheet = ({
       connectionId: '',
     },
   });
+
   const [appId, actionId] = useWatch({
     control: form.control,
     name: ['appId', 'actionId'],
@@ -78,26 +69,37 @@ const ActionSheet = ({
 
   const selectedAction = useMemo(() => {
     if (!appId || !actionId) return null;
-    const app = apps.find((app) => app.id === appId);
-    return app?.actions.find((action) => action.id === actionId);
+    const app = apps.find((a) => a.id === appId);
+    return app?.actions.find((a) => a.id === actionId);
   }, [appId, actionId]);
 
   const onSubmit = (fieldData: any) => {
     const formData = form.getValues();
 
-    if (!formData.appId || !formData.actionId || !sourceNodeId) {
-      console.error('Missing app, action, or source node');
+    if (!formData.appId) {
+      form.setError('appId', { type: 'required', message: 'App is required' });
+      return;
+    }
+
+    if (!formData.actionId) {
+      form.setError('actionId', {
+        type: 'required',
+        message: 'Action is required',
+      });
       return;
     }
 
     if (!formData.connectionId) {
-      console.error('Missing connection');
+      form.setError('connectionId', {
+        type: 'required',
+        message: 'Connection is required',
+      });
       return;
     }
 
     const actionData = {
       appId: formData.appId,
-      actionId: formData.actionId,
+      triggerId: formData.actionId,
       connectionId: formData.connectionId,
       fields: fieldData || {},
     };
@@ -106,22 +108,17 @@ const ActionSheet = ({
     const addActionButtonId = `add-action-${actionNodeId}`;
 
     setNodes((prev) => {
-      const sourceNode = prev.find((node) => node.id === sourceNodeId);
-
-      if (!sourceNode) {
-        console.error('Source node not found:', sourceNodeId);
-        return prev;
-      }
+      const sourceNode = prev.find((n) => n.id === sourceNodeId);
+      if (!sourceNode) return prev;
 
       const newX = sourceNode.position.x + 350;
       const newY = sourceNode.position.y;
 
-      // Find and remove the specific add-action button connected to source
       const oldButtonId = `add-action-${sourceNodeId}`;
-      const filteredNodes = prev.filter((n) => n.id !== oldButtonId);
+      const filtered = prev.filter((n) => n.id !== oldButtonId);
 
       return [
-        ...filteredNodes,
+        ...filtered,
         {
           id: actionNodeId,
           type: 'actionNode',
@@ -146,10 +143,10 @@ const ActionSheet = ({
 
     setEdges((prev) => {
       const oldButtonId = `add-action-${sourceNodeId}`;
-      const filteredEdges = prev.filter((e) => e.target !== oldButtonId);
+      const filtered = prev.filter((e) => e.target !== oldButtonId);
 
       return [
-        ...filteredEdges,
+        ...filtered,
         {
           id: `${sourceNodeId}-${actionNodeId}`,
           source: sourceNodeId,
@@ -171,9 +168,7 @@ const ActionSheet = ({
     <Sheet
       open={open}
       onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          form.reset();
-        }
+        if (!isOpen) form.reset();
         onOpenChange(isOpen);
       }}
     >
@@ -185,154 +180,126 @@ const ActionSheet = ({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="px-4">
-          <Form {...form}>
-            <form className="space-y-6">
-              <FormField
-                control={form.control}
-                name={'appId'}
-                render={({ field }) => (
-                  <FormItem>
-                    <Label>Choose an app</Label>
-                    <Select
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        form.setValue('actionId', '');
-                        form.setValue('connectionId', '');
+        <form className="space-y-6 px-4">
+          <Controller
+            control={form.control}
+            name="appId"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel>Choose an app</FieldLabel>
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    form.setValue('actionId', '');
+                    form.setValue('connectionId', '');
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an app" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apps
+                      .filter((a) => a.actions.length > 0)
+                      .map((app) => (
+                        <SelectItem key={app.id} value={app.id}>
+                          {app.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
+          />
+
+          {appId && (
+            <Controller
+              control={form.control}
+              name="connectionId"
+              render={({ fieldState }) => (
+                <Field>
+                  <FieldLabel>App connection</FieldLabel>
+                  <FieldDescription className="pb-2">
+                    Connect your account to use this action
+                  </FieldDescription>
+                  {!connectionId ? (
+                    <ConnectBtn
+                      appId={appId}
+                      onAuthSuccess={(id: string) => {
+                        form.setValue('connectionId', id);
+                        form.clearErrors('connectionId');
                       }}
-                      {...form.register('appId')}
+                    />
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => form.setValue('connectionId', '')}
                     >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select an app" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {apps
-                          .filter((app) => app.actions.length > 0)
-                          .map((app) => (
-                            <SelectItem key={app.id} value={app.id}>
-                              {app.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {appId && (
-                <FormField
-                  control={form.control}
-                  name="connectionId"
-                  render={({ fieldState }) => (
-                    <FormItem>
-                      <div className="mt-6">
-                        <div className="mb-4">
-                          <h3 className="text-sm font-medium">
-                            App connection
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Connect your account to use this action
-                          </p>
-                          {!connectionId ? (
-                            <ConnectBtn
-                              appId={appId}
-                              onAuthSuccess={(id: string) => {
-                                form.setValue('connectionId', id);
-                              }}
-                            />
-                          ) : (
-                            <Button
-                              variant="outline"
-                              className="w-full"
-                              onClick={() => {
-                                form.setValue('connectionId', '');
-                              }}
-                            >
-                              Disconnect
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      {fieldState.error && (
-                        <p className="text-sm text-destructive">
-                          {fieldState.error.message}
-                        </p>
-                      )}
-                    </FormItem>
+                      Disconnect
+                    </Button>
                   )}
-                />
-              )}
-
-              {appId && (
-                <FormField
-                  control={form.control}
-                  name="actionId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Label>Choose an action</Label>
-                      <Select
-                        onValueChange={field.onChange}
-                        {...form.register('actionId')}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select an action" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {apps
-                            .find((app) => app.id === appId)
-                            ?.actions.map((action) => (
-                              <SelectItem key={action.id} value={action.id}>
-                                {action.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+                  {fieldState.error && (
+                    <FieldError errors={[fieldState.error]} />
                   )}
-                />
+                </Field>
               )}
-            </form>
-          </Form>
-
-          {/* Configure */}
-          {selectedAction && selectedAction.fields.length > 0 && (
-            <div className="mt-6">
-              <div className="mb-4">
-                <h3 className="text-sm font-medium">Configure action</h3>
-                <p className="text-sm text-muted-foreground">
-                  {selectedAction.description}
-                </p>
-              </div>
-              <DynamicForm
-                fields={selectedAction.fields}
-                onSubmit={onSubmit}
-                submitLabel="Add action"
-              />
-            </div>
+            />
           )}
 
-          {/* Submit button for actions with no fields */}
-          {selectedAction && selectedAction.fields.length === 0 && (
-            <div className="mt-6">
-              <Button onClick={() => onSubmit({})} className="w-full">
-                Add action
-              </Button>
-            </div>
+          {appId && (
+            <Controller
+              control={form.control}
+              name="actionId"
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel>Choose an action</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select an action" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {apps
+                        .find((a) => a.id === appId)
+                        ?.actions.map((action) => (
+                          <SelectItem key={action.id} value={action.id}>
+                            {action.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  {fieldState.error && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
           )}
-        </div>
+        </form>
 
-        {!selectedAction && (
-          <SheetFooter>
-            <SheetClose asChild>
-              <Button variant="outline">Close</Button>
-            </SheetClose>
-          </SheetFooter>
+        {selectedAction && selectedAction.fields.length > 0 && (
+          <div className="mt-6 px-4">
+            <div className="mb-4">
+              <h3 className="text-sm font-medium">Configure action</h3>
+              <p className="text-sm text-muted-foreground">
+                {selectedAction.description}
+              </p>
+            </div>
+            <DynamicForm
+              fields={selectedAction.fields}
+              onSubmit={onSubmit}
+              submitLabel="Add action"
+            />
+          </div>
+        )}
+
+        {selectedAction && selectedAction.fields.length === 0 && (
+          <div className="mt-6 px-4">
+            <Button className="w-full" onClick={() => onSubmit({})}>
+              Add action
+            </Button>
+          </div>
         )}
       </SheetContent>
     </Sheet>

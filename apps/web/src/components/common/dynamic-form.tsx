@@ -1,14 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -17,25 +8,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { type FieldConfig } from '@repo/common/types';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { type FieldConfig } from '@repo/common/types';
 import { useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
 
 interface DynamicFormProps {
   fields: FieldConfig[];
   onSubmit: (data: any) => void;
-  submitLabel?: string;
-  isLoading?: boolean;
+  submitLabel: string;
 }
 
-const DynamicForm = ({
-  fields,
-  onSubmit,
-  submitLabel = 'Submit',
-  isLoading = false,
-}: DynamicFormProps) => {
+const DynamicForm = ({ fields, onSubmit, submitLabel }: DynamicFormProps) => {
   const defaultValues = fields.reduce(
     (acc, field) => {
       acc[field.name] = field.defaultValue ?? '';
@@ -60,6 +46,7 @@ const DynamicForm = ({
     resolver: zodResolver(schema),
     defaultValues,
   });
+
   const renderField = (field: FieldConfig) => {
     switch (field.type) {
       case 'text':
@@ -67,72 +54,71 @@ const DynamicForm = ({
       case 'number':
       case 'date':
         return (
-          <FormField
+          <Controller
             key={field.name}
             control={form.control}
             name={field.name}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <FormControl>
-                  <Input
-                    type={field.type}
-                    placeholder={field.placeholder}
-                    {...formField}
-                  />
-                </FormControl>
+            render={({ field: formField, fieldState }) => (
+              <Field>
+                <FieldLabel>{field.label}</FieldLabel>
+                <Input
+                  name={formField.name}
+                  value={formField.value}
+                  onChange={formField.onChange}
+                  type={field.type}
+                  placeholder={field.placeholder}
+                />
                 {field.description && (
-                  <FormDescription>{field.description}</FormDescription>
+                  <FieldDescription>{field.description}</FieldDescription>
                 )}
-                <FormMessage />
-              </FormItem>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
             )}
           />
         );
 
       case 'textarea':
         return (
-          <FormField
+          <Controller
             key={field.name}
             control={form.control}
             name={field.name}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <FormControl>
-                  <textarea
-                    className="flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-                    placeholder={field.placeholder}
-                    {...formField}
-                  />
-                </FormControl>
+            render={({ field: formField, fieldState }) => (
+              <Field>
+                <FieldLabel>{field.label}</FieldLabel>
+                <textarea
+                  name={formField.name}
+                  value={formField.value}
+                  onChange={formField.onChange}
+                  placeholder={field.placeholder}
+                  className="flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+                />
                 {field.description && (
-                  <FormDescription>{field.description}</FormDescription>
+                  <FieldDescription>{field.description}</FieldDescription>
                 )}
-                <FormMessage />
-              </FormItem>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
             )}
           />
         );
 
       case 'select':
         return (
-          <FormField
+          <Controller
             key={field.name}
             control={form.control}
             name={field.name}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
+            render={({ field: formField, fieldState }) => (
+              <Field>
+                <FieldLabel>{field.label}</FieldLabel>
                 <Select
+                  name={formField.name}
+                  value={formField.value}
                   onValueChange={formField.onChange}
-                  defaultValue={formField.value}
                 >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={field.placeholder} />
-                    </SelectTrigger>
-                  </FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={field.placeholder} />
+                  </SelectTrigger>
                   <SelectContent>
                     {field.options?.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
@@ -142,36 +128,37 @@ const DynamicForm = ({
                   </SelectContent>
                 </Select>
                 {field.description && (
-                  <FormDescription>{field.description}</FormDescription>
+                  <FieldDescription>{field.description}</FieldDescription>
                 )}
-                <FormMessage />
-              </FormItem>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
             )}
           />
         );
 
       case 'checkbox':
         return (
-          <FormField
+          <Controller
             key={field.name}
             control={form.control}
             name={field.name}
-            render={({ field: formField }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl>
+            render={({ field: formField, fieldState }) => (
+              <Field>
+                <div className="flex items-start space-x-3 rounded-md border p-4">
                   <Checkbox
-                    checked={formField.value}
-                    onCheckedChange={formField.onChange}
+                    name={formField.name}
+                    value={formField.value}
+                    onChange={formField.onChange}
                   />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>{field.label}</FormLabel>
-                  {field.description && (
-                    <FormDescription>{field.description}</FormDescription>
-                  )}
+                  <div className="space-y-1">
+                    <FieldLabel>{field.label}</FieldLabel>
+                    {field.description && (
+                      <FieldDescription>{field.description}</FieldDescription>
+                    )}
+                  </div>
                 </div>
-                <FormMessage />
-              </FormItem>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
             )}
           />
         );
@@ -182,14 +169,12 @@ const DynamicForm = ({
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {fields.map((field) => renderField(field))}
-        <Button type="submit" disabled={isLoading} className="w-full">
-          {isLoading ? 'Submitting...' : submitLabel}
-        </Button>
-      </form>
-    </Form>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      {fields.map((field) => renderField(field))}
+      <Button className="mt-6 w-full" type="submit">
+        {submitLabel}
+      </Button>
+    </form>
   );
 };
 
