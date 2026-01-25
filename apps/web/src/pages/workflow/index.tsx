@@ -4,7 +4,9 @@ import AddTriggerButtonNode from '@/components/nodes/add-trigger-button-node';
 import TriggerNode from '@/components/nodes/trigger-node';
 import ActionSheet from '@/components/sheets/action-sheet';
 import TriggerSheet from '@/components/sheets/trigger-sheet';
+import DeleteConfirmationDialog from '@/components/dialog/delete-confirmation-dialog';
 import { Button } from '@/components/ui/button';
+import { INITIAL_X, INITIAL_Y, NODE_SPACING } from '@/constants/workflow';
 import workflowService from '@/services/workflow.service';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -20,9 +22,9 @@ import {
   type OnNodesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { ArrowLeft } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
 
 const nodeTypes = {
   triggerNode: TriggerNode,
@@ -34,7 +36,7 @@ const nodeTypes = {
 export default function Workflow() {
   const navigate = useNavigate();
   const { id: workflowId } = useParams();
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryFn: () => workflowService.getWorkflow(workflowId!),
     queryKey: ['workflow', workflowId],
   });
@@ -43,7 +45,7 @@ export default function Workflow() {
     {
       id: 'add-trigger-initial',
       type: 'addTriggerButton',
-      position: { x: 100, y: 100 },
+      position: { x: INITIAL_X, y: INITIAL_Y },
       data: {
         onAddClick: () => setTriggerSheetOpen(true),
       },
@@ -53,6 +55,7 @@ export default function Workflow() {
   const [triggerSheetOpen, setTriggerSheetOpen] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [selectedSourceNodeId, setSelectedSourceNodeId] = useState<string>('');
+  const [nodeIdToDelete, setNodeIdToDelete] = useState<string | null>(null);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) =>
@@ -69,6 +72,14 @@ export default function Workflow() {
   //   [setEdges],
   // );
 
+  const handleEditClick = () => {
+    console.log('Edit clicked');
+  };
+
+  const handleDeleteClick = (nodeId: string) => {
+    setNodeIdToDelete(nodeId);
+  };
+
   useEffect(() => {
     if (data && data?.steps.length > 0) {
       const lastStep = data.steps[data.steps.length - 1];
@@ -76,14 +87,22 @@ export default function Workflow() {
 
       setNodes([
         ...data.steps.map((step) => {
-          return { ...step.metadata, id: step.id };
+          return {
+            ...step.metadata,
+            id: step.id,
+            data: {
+              ...step.metadata.data,
+              handleEditClick: () => handleEditClick(),
+              handleDeleteClick: () => handleDeleteClick(step.id),
+            },
+          };
         }),
         {
           id: addActionButtonId,
           type: 'addActionButton',
           position: {
-            x: lastStep.metadata.position.x + 350,
-            y: lastStep.metadata.position.y,
+            x: (lastStep.metadata.position?.x || INITIAL_X) + NODE_SPACING,
+            y: lastStep.metadata.position?.y || INITIAL_Y,
           },
           data: {
             onAddClick: () => {
@@ -94,7 +113,7 @@ export default function Workflow() {
         },
       ]);
 
-      let edgesArr: Edge[] = [];
+      const edgesArr: Edge[] = [];
       data.steps.forEach((step, i) => {
         if (i < data.steps.length - 1) {
           edgesArr.push({
@@ -133,19 +152,30 @@ export default function Workflow() {
 
       {/* Workflow Canvas */}
       <div className="flex-1">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          // onConnect={onConnect}
-          fitView
-        >
-          <MiniMap />
-          <Background />
-          <Controls />
-        </ReactFlow>
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground">
+                Loading workflow...
+              </p>
+            </div>
+          </div>
+        ) : (
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            // onConnect={onConnect}
+            fitView
+          >
+            <MiniMap />
+            <Background />
+            <Controls />
+          </ReactFlow>
+        )}
       </div>
 
       <TriggerSheet
@@ -155,6 +185,8 @@ export default function Workflow() {
         setEdges={setEdges}
         setSelectedSourceNodeId={setSelectedSourceNodeId}
         setActionSheetOpen={setActionSheetOpen}
+        handleEditClick={handleEditClick}
+        handleDeleteClick={handleDeleteClick}
       />
 
       <ActionSheet
@@ -166,6 +198,21 @@ export default function Workflow() {
         sourceNodeId={selectedSourceNodeId}
         setSelectedSourceNodeId={setSelectedSourceNodeId}
         setActionSheetOpen={setActionSheetOpen}
+        handleEditClick={handleEditClick}
+        handleDeleteClick={handleDeleteClick}
+      />
+
+      <DeleteConfirmationDialog
+        open={!!nodeIdToDelete}
+        onOpenChange={(open) => !open && setNodeIdToDelete(null)}
+        nodeIdToDelete={nodeIdToDelete}
+        nodes={nodes}
+        edges={edges}
+        setNodes={setNodes}
+        setEdges={setEdges}
+        setSelectedSourceNodeId={setSelectedSourceNodeId}
+        setActionSheetOpen={setActionSheetOpen}
+        setTriggerSheetOpen={setTriggerSheetOpen}
       />
     </div>
   );

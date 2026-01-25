@@ -124,17 +124,63 @@ export const getWorkflow = asyncHandler(
 export const getAllWorkflows = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id: userId } = req.user;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+
+    const totalCountResult = await db
+      .select({ value: workflows.id })
+      .from(workflows)
+      .where(eq(workflows.userId, userId));
+    const totalCount = totalCountResult.length;
 
     const workflowsDetails = await db.query.workflows.findMany({
       where: eq(workflows.userId, userId),
+      with: {
+        steps: {
+          columns: {
+            lastExecutedAt: true,
+          },
+        },
+      },
+      limit,
+      offset,
+      orderBy: (workflows, { desc }) => [desc(workflows.createdAt)],
     });
 
-    if (!workflowsDetails) {
-      return next(CustomErrorHandler.notFound('Workflows not found'));
-    }
+    const workflowsWithLastExecuted = workflowsDetails.map((workflow) => {
+      const lastExecutedAt = workflow.steps.reduce(
+        (latest, step) => {
+          if (!step.lastExecutedAt) return latest;
+          if (!latest) return step.lastExecutedAt;
+          return step.lastExecutedAt > latest ? step.lastExecutedAt : latest;
+        },
+        null as Date | null,
+      );
 
-    return res
-      .status(200)
-      .send(ResponseHandler(200, 'Workflows details', workflowsDetails));
+      return {
+        id: workflow.id,
+        name: workflow.name,
+        userId: workflow.userId,
+        status: workflow.status,
+        createdAt: workflow.createdAt,
+        updatedAt: workflow.updatedAt,
+        lastExecutedAt,
+      };
+    });
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.status(200).send(
+      ResponseHandler(200, 'Workflows details', {
+        workflows: workflowsWithLastExecuted,
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          totalPages,
+        },
+      }),
+    );
   },
 );

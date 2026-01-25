@@ -8,6 +8,7 @@ import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useParams } from 'react-router-dom';
 import z from 'zod';
+import { INITIAL_X, INITIAL_Y, NODE_SPACING } from '@/constants/workflow';
 import ConnectBtn from '../common/connect-btn';
 import DynamicForm from '../common/dynamic-form';
 import { Button } from '../ui/button';
@@ -34,6 +35,8 @@ interface ITriggerSheetProps {
   setEdges: Dispatch<SetStateAction<Edge[]>>;
   setSelectedSourceNodeId: Dispatch<SetStateAction<string>>;
   setActionSheetOpen: Dispatch<SetStateAction<boolean>>;
+  handleEditClick: () => void;
+  handleDeleteClick: (nodeId: string) => void;
 }
 
 const TriggerSheet = ({
@@ -43,6 +46,8 @@ const TriggerSheet = ({
   setEdges,
   setSelectedSourceNodeId,
   setActionSheetOpen,
+  handleEditClick,
+  handleDeleteClick,
 }: ITriggerSheetProps) => {
   const { id: workflowId } = useParams();
   const triggerSheetSchema = z.object({
@@ -120,10 +125,12 @@ const TriggerSheet = ({
     const nodeDetails: Node = {
       id: '',
       type: 'triggerNode',
-      position: { x: 100, y: 100 },
+      position: { x: INITIAL_X, y: INITIAL_Y },
       data: {
         appId: formData.appId,
         triggerId: formData.triggerId,
+        connectionId: formData.connectionId,
+        index: 0,
         fields: fieldData || {},
       },
     };
@@ -137,11 +144,16 @@ const TriggerSheet = ({
       ...prev.filter((n) => n.type !== 'addTriggerButton'),
       {
         ...nodeDetails,
+        data: {
+          ...nodeDetails.data,
+          handleEditClick: () => handleEditClick(),
+          handleDeleteClick: () => handleDeleteClick(triggerNodeId),
+        },
       },
       {
         id: addActionButtonId,
         type: 'addActionButton',
-        position: { x: 450, y: 100 },
+        position: { x: INITIAL_X + NODE_SPACING, y: INITIAL_Y },
         data: {
           onAddClick: () => {
             setSelectedSourceNodeId(triggerNodeId);

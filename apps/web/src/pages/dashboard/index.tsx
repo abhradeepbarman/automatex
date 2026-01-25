@@ -16,13 +16,37 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import workflowService from '@/services/workflow.service';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { Pencil, Check, X, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { WorkflowStatus } from '@repo/common/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const limit = 5;
+
+  const { data: workflowsData, isLoading } = useQuery({
+    queryKey: ['workflows', page, limit],
+    queryFn: () => workflowService.getAllWorkflows(page, limit),
+  });
+
   const { mutateAsync: createWorkflowFn, isPending } = useMutation({
     mutationFn: () => workflowService.createWorkflow(),
     onSuccess: (data) => navigate(`/workflow/${data.id}`),
@@ -39,6 +63,32 @@ const Dashboard = () => {
   const handleCreateWorkflow = async () => {
     await createWorkflowFn();
   };
+
+  const handlePreviousPage = () => {
+    if (page > 1) setPage(page - 1);
+  };
+
+  const handleNextPage = () => {
+    if (workflowsData && page < workflowsData.pagination.totalPages) {
+      setPage(page + 1);
+    }
+  };
+
+  const handlePageClick = (pageNum: number) => {
+    setPage(pageNum);
+  };
+
+  const formatLastRun = (lastExecutedAt: string | null) => {
+    if (!lastExecutedAt) return 'Never';
+    try {
+      return formatDistanceToNow(new Date(lastExecutedAt), { addSuffix: true });
+    } catch {
+      return 'Never';
+    }
+  };
+
+  const workflows = workflowsData?.workflows || [];
+  const pagination = workflowsData?.pagination;
 
   return (
     <div className="min-h-screen bg-background">
@@ -65,9 +115,12 @@ const Dashboard = () => {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard title="Workflows" value="12" />
-            <StatCard title="Runs (30 days)" value="1,248" />
-            <StatCard title="Errors" value="3" />
+            <StatCard
+              title="Workflows"
+              value={pagination?.total.toString() || '0'}
+            />
+            <StatCard title="Runs (30 days)" value="0" />
+            <StatCard title="Errors" value="0" />
           </div>
 
           <Card className="border-border/50 shadow-sm">
@@ -79,46 +132,98 @@ const Dashboard = () => {
             </CardHeader>
 
             <CardContent className="divide-y">
-              <WorkflowItem
-                name="Lead Sync Automation"
-                status="Active"
-                lastRun="2 hours ago"
-              />
-              <WorkflowItem
-                name="Invoice Generator"
-                status="Paused"
-                lastRun="Yesterday"
-              />
-              <WorkflowItem
-                name="Email Follow-up"
-                status="Active"
-                lastRun="3 days ago"
-              />
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : workflows.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <p className="text-muted-foreground">No workflows yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Create your first workflow to get started
+                  </p>
+                </div>
+              ) : (
+                workflows.map((workflow) => (
+                  <WorkflowItem
+                    key={workflow.id}
+                    id={workflow.id}
+                    name={workflow.name}
+                    status={workflow.status}
+                    lastRun={formatLastRun(workflow.lastExecutedAt)}
+                    createdAt={workflow.createdAt}
+                    onClick={() => navigate(`/workflow/${workflow.id}`)}
+                  />
+                ))
+              )}
             </CardContent>
 
-            <div className="flex items-center justify-between border-t px-6 py-3">
-              <p className="text-sm text-muted-foreground">Showing 1–3 of 12</p>
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between border-t px-6 py-3">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={handlePreviousPage}
+                        className={
+                          page === 1
+                            ? 'pointer-events-none opacity-50'
+                            : 'cursor-pointer'
+                        }
+                      />
+                    </PaginationItem>
 
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious />
-                  </PaginationItem>
+                    {Array.from(
+                      { length: pagination.totalPages },
+                      (_, i) => i + 1,
+                    )
+                      .filter((p) => {
+                        // Show first page, last page, current page, and pages around current
+                        return (
+                          p === 1 ||
+                          p === pagination.totalPages ||
+                          Math.abs(p - page) <= 1
+                        );
+                      })
+                      .map((pageNum, idx, arr) => {
+                        // Add ellipsis if there's a gap
+                        const showEllipsisBefore =
+                          idx > 0 && pageNum - arr[idx - 1] > 1;
 
-                  <PaginationItem>
-                    <PaginationLink isActive>1</PaginationLink>
-                  </PaginationItem>
+                        return (
+                          <div key={pageNum} className="flex items-center">
+                            {showEllipsisBefore && (
+                              <span className="px-2 text-muted-foreground">
+                                ...
+                              </span>
+                            )}
+                            <PaginationItem>
+                              <PaginationLink
+                                isActive={pageNum === page}
+                                onClick={() => handlePageClick(pageNum)}
+                                className="cursor-pointer"
+                              >
+                                {pageNum}
+                              </PaginationLink>
+                            </PaginationItem>
+                          </div>
+                        );
+                      })}
 
-                  <PaginationItem>
-                    <PaginationLink>2</PaginationLink>
-                  </PaginationItem>
-
-                  <PaginationItem>
-                    <PaginationNext />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={handleNextPage}
+                        className={
+                          page === pagination.totalPages
+                            ? 'pointer-events-none opacity-50'
+                            : 'cursor-pointer'
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
           </Card>
         </div>
       </div>
@@ -142,31 +247,245 @@ const StatCard = ({ title, value }: { title: string; value: string }) => {
 };
 
 const WorkflowItem = ({
+  id,
   name,
   status,
   lastRun,
+  createdAt,
+  onClick,
 }: {
+  id: string;
   name: string;
-  status: 'Active' | 'Paused';
+  status: WorkflowStatus;
   lastRun: string;
+  createdAt: string;
+  onClick?: () => void;
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(name);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { mutate: updateWorkflowName, isPending: isRenamePending } =
+    useMutation({
+      mutationFn: (newName: string) =>
+        workflowService.updateWorkflow(id, newName),
+      onSuccess: () => {
+        setIsEditing(false);
+        queryClient.invalidateQueries({ queryKey: ['workflows'] });
+        toast.success('Workflow renamed successfully');
+      },
+      onError: (error: AxiosError<{ message: string }>) => {
+        console.error('Rename workflow failed:', error);
+        toast.error('Rename failed', {
+          description:
+            error?.response?.data?.message ||
+            'Unable to rename workflow. Please try again.',
+        });
+        setEditedName(name);
+      },
+    });
+
+  const { mutate: toggleWorkflowStatus, isPending: isStatusPending } =
+    useMutation({
+      mutationFn: (newStatus: WorkflowStatus) =>
+        workflowService.updateWorkflow(id, undefined, newStatus),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['workflows'] });
+        toast.success(
+          `Workflow ${status === WorkflowStatus.ACTIVE ? 'paused' : 'activated'} successfully`,
+        );
+      },
+      onError: (error: AxiosError<{ message: string }>) => {
+        console.error('Toggle status failed:', error);
+        toast.error('Status update failed', {
+          description:
+            error?.response?.data?.message ||
+            'Unable to update workflow status. Please try again.',
+        });
+      },
+    });
+
+  const { mutate: deleteWorkflow, isPending: isDeletePending } = useMutation({
+    mutationFn: () => workflowService.deleteWorkflow(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      toast.success('Workflow deleted successfully');
+      setShowDeleteDialog(false);
+    },
+    onError: (error: AxiosError<{ message: string }>) => {
+      console.error('Delete workflow failed:', error);
+      toast.error('Delete failed', {
+        description:
+          error?.response?.data?.message ||
+          'Unable to delete workflow. Please try again.',
+      });
+    },
+  });
+
+  const handleSave = () => {
+    if (editedName.trim() && editedName !== name) {
+      updateWorkflowName(editedName.trim());
+    } else {
+      setIsEditing(false);
+      setEditedName(name);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedName(name);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  };
+
+  const handleStatusToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newStatus =
+      status === WorkflowStatus.ACTIVE
+        ? WorkflowStatus.INACTIVE
+        : WorkflowStatus.ACTIVE;
+    toggleWorkflowStatus(newStatus);
+  };
+
+  const handleDelete = () => {
+    deleteWorkflow();
+  };
+
+  const formatCreatedAt = (createdAt: string) => {
+    try {
+      return formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+    } catch {
+      return 'Unknown';
+    }
+  };
+
   return (
-    <div className="flex items-center justify-between py-4">
-      <div>
-        <p className="font-medium">{name}</p>
-        <p className="text-sm text-muted-foreground">Last run: {lastRun}</p>
+    <div
+      className="group flex items-center justify-between gap-4 py-4 cursor-pointer hover:bg-accent/50 transition-colors px-2 -mx-2 rounded"
+      onClick={isEditing ? undefined : onClick}
+    >
+      <div className="flex-1 min-w-0">
+        {isEditing ? (
+          <div
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Input
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="h-8 max-w-xs"
+              autoFocus
+              disabled={isRenamePending}
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 flex-shrink-0"
+              onClick={handleSave}
+              disabled={isRenamePending}
+            >
+              <Check className="h-4 w-4 text-green-600" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 flex-shrink-0"
+              onClick={handleCancel}
+              disabled={isRenamePending}
+            >
+              <X className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-1 mb-1">
+              <p className="font-medium truncate mr-3">{name}</p>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 flex-shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}
+                >
+                  <Pencil className="h-3 w-3 text-muted-foreground" />
+                </Button>
+                <AlertDialog
+                  open={showDeleteDialog}
+                  onOpenChange={setShowDeleteDialog}
+                >
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 w-6 p-0 flex-shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete workflow?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently
+                        delete the workflow "{name}" and all its steps.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={handleDelete}
+                        disabled={isDeletePending}
+                      >
+                        {isDeletePending ? 'Deleting...' : 'Delete'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">
+                Created {formatCreatedAt(createdAt)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Last run: {lastRun}
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       <Button
         variant="outline"
         size="sm"
         className={
-          status === 'Active'
-            ? 'border-emerald-500/30 text-emerald-600'
-            : 'text-muted-foreground'
+          status === WorkflowStatus.ACTIVE
+            ? 'border-emerald-500/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex-shrink-0'
+            : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100 flex-shrink-0'
         }
+        onClick={handleStatusToggle}
+        disabled={isStatusPending}
       >
-        {status}
+        {isStatusPending
+          ? 'Updating...'
+          : status === WorkflowStatus.ACTIVE
+            ? 'Pause'
+            : 'Activate'}
       </Button>
     </div>
   );

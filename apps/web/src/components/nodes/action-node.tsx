@@ -1,12 +1,22 @@
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import apps from '@repo/common/@apps';
 import type { Node, NodeProps } from '@xyflow/react';
 import { Handle, Position } from '@xyflow/react';
-import apps from '@repo/common/@apps';
+import { MoreVertical, Trash2 } from 'lucide-react';
 
 type IActionNodeData = Node<
   {
     appId: string;
     actionId: string;
+    index: number;
     fields: any;
+    handleEditClick: () => void;
+    handleDeleteClick: () => void;
   },
   'actionNode'
 >;
@@ -20,11 +30,31 @@ const ActionNode = ({ data }: NodeProps<IActionNodeData>) => {
   return (
     <div className="relative min-w-65 rounded-md border bg-card shadow-sm">
       {/* Header */}
-      <div className="px-3 py-2 border-b bg-muted/20">
-        <p className="text-sm font-medium">
-          {appDetails?.name || 'Unknown App'}
-        </p>
-        <p className="text-xs text-muted-foreground mt-0.5">Action</p>
+      <div className="px-3 py-2 border-b bg-muted/20 flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium">
+            {appDetails?.name || 'Unknown App'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Action</p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger className="ml-2 p-1 hover:bg-muted rounded-sm transition-colors">
+            <MoreVertical className="h-4 w-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {/* <DropdownMenuItem onClick={data.handleEditClick}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem> */}
+            <DropdownMenuItem
+              onClick={data.handleDeleteClick}
+              variant="destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Content */}

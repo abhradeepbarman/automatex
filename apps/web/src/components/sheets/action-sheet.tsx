@@ -8,6 +8,7 @@ import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useParams } from 'react-router-dom';
 import z from 'zod';
+import { NODE_SPACING } from '@/constants/workflow';
 import ConnectBtn from '../common/connect-btn';
 import DynamicForm from '../common/dynamic-form';
 import { Button } from '../ui/button';
@@ -36,6 +37,8 @@ interface IActionSheetProps {
   sourceNodeId: string;
   setSelectedSourceNodeId: Dispatch<SetStateAction<string>>;
   setActionSheetOpen: Dispatch<SetStateAction<boolean>>;
+  handleEditClick: () => void;
+  handleDeleteClick: (nodeId: string) => void;
 }
 
 const ActionSheet = ({
@@ -47,6 +50,8 @@ const ActionSheet = ({
   sourceNodeId,
   setSelectedSourceNodeId,
   setActionSheetOpen,
+  handleEditClick,
+  handleDeleteClick,
 }: IActionSheetProps) => {
   const { id: workflowId } = useParams();
   const actionSheetSchema = z.object({
@@ -132,10 +137,11 @@ const ActionSheet = ({
       id: '',
       type: 'actionNode',
       position: {
-        x: sourceNode.position.x + 350,
+        x: sourceNode.position.x + NODE_SPACING,
         y: sourceNode.position.y,
       },
       data: {
+        index: nodes.length,
         appId: formData.appId,
         actionId: formData.actionId,
         fields: fieldData || {},
@@ -156,12 +162,17 @@ const ActionSheet = ({
         ...filtered,
         {
           ...nodeDetails,
+          data: {
+            ...nodeDetails.data,
+            handleEditClick: () => handleEditClick(),
+            handleDeleteClick: () => handleDeleteClick(actionNodeId),
+          },
         },
         {
           id: addActionButtonId,
           type: 'addActionButton',
           position: {
-            x: nodeDetails.position.x + 350,
+            x: nodeDetails.position.x + NODE_SPACING,
             y: nodeDetails.position.y,
           },
           data: {

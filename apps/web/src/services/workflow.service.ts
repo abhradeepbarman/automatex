@@ -32,6 +32,24 @@ export interface IGetWorkflowResponse {
   }[];
 }
 
+export interface IGetAllWorkflowsResponse {
+  workflows: Array<{
+    id: string;
+    name: string;
+    userId: string;
+    status: WorkflowStatus;
+    createdAt: string;
+    updatedAt: string;
+    lastExecutedAt: string | null;
+  }>;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 class WorkflowService {
   async createWorkflow(name?: string): Promise<ICreateWorkflowResponse> {
     const { data } = await axiosInstance.post('/workflow', {
@@ -51,8 +69,13 @@ class WorkflowService {
     return data.data;
   }
 
-  async getAllWorkflows() {
-    const { data } = await axiosInstance.get('/workflow');
+  async getAllWorkflows(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<IGetAllWorkflowsResponse> {
+    const { data } = await axiosInstance.get('/workflow', {
+      params: { page, limit },
+    });
     return data.data;
   }
 
