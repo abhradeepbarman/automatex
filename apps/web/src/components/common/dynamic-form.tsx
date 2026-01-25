@@ -14,14 +14,21 @@ import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
+import { LoaderCircle } from 'lucide-react';
 
 interface DynamicFormProps {
   fields: FieldConfig[];
   onSubmit: (data: any) => void;
   submitLabel: string;
+  isLoading: boolean;
 }
 
-const DynamicForm = ({ fields, onSubmit, submitLabel }: DynamicFormProps) => {
+const DynamicForm = ({
+  fields,
+  onSubmit,
+  submitLabel,
+  isLoading,
+}: DynamicFormProps) => {
   const defaultValues = fields.reduce(
     (acc, field) => {
       acc[field.name] = field.defaultValue ?? '';
@@ -171,8 +178,8 @@ const DynamicForm = ({ fields, onSubmit, submitLabel }: DynamicFormProps) => {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       {fields.map((field) => renderField(field))}
-      <Button className="mt-6 w-full" type="submit">
-        {submitLabel}
+      <Button className="mt-6 w-full" type="submit" disabled={isLoading}>
+        {!isLoading ? submitLabel : <LoaderCircle className="animate-spin" />}
       </Button>
     </form>
   );

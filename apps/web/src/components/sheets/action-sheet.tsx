@@ -1,8 +1,12 @@
-import apps from '@repo/common/@apps';
+import stepService from '@/services/step.service';
 import { zodResolver } from '@hookform/resolvers/zod';
+import apps from '@repo/common/@apps';
+import { StepType } from '@repo/common/types';
+import { useMutation } from '@tanstack/react-query';
 import type { Edge, Node } from '@xyflow/react';
 import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useParams } from 'react-router-dom';
 import z from 'zod';
 import ConnectBtn from '../common/connect-btn';
 import DynamicForm from '../common/dynamic-form';
@@ -26,6 +30,7 @@ import {
 interface IActionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  nodes: Node[];
   setNodes: Dispatch<SetStateAction<Node[]>>;
   setEdges: Dispatch<SetStateAction<Edge[]>>;
   sourceNodeId: string;
@@ -36,12 +41,14 @@ interface IActionSheetProps {
 const ActionSheet = ({
   open,
   onOpenChange,
+  nodes,
   setNodes,
   setEdges,
   sourceNodeId,
   setSelectedSourceNodeId,
   setActionSheetOpen,
 }: IActionSheetProps) => {
+  const { id: workflowId } = useParams();
   const actionSheetSchema = z.object({
     appId: z.string().min(1, 'Please select an app'),
     actionId: z.string().min(1, 'Please select an action'),
@@ -55,6 +62,19 @@ const ActionSheet = ({
       actionId: '',
       connectionId: '',
     },
+  });
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationKey: ['create-action'],
+    mutationFn: (metadata: Node) =>
+      stepService.addStep(
+        workflowId!,
+        appId,
+        nodes.length,
+        StepType.ACTION,
+        connectionId,
+        metadata,
+      ),
   });
 
   const [appId, actionId] = useWatch({
@@ -73,11 +93,15 @@ const ActionSheet = ({
     return app?.actions.find((a) => a.id === actionId);
   }, [appId, actionId]);
 
-  const onSubmit = (fieldData: any) => {
+  const onSubmit = async (fieldData: any) => {
     const formData = form.getValues();
 
-    if (!formData.appId) {
-      form.setError('appId', { type: 'required', message: 'App is required' });
+    // validate parent form fields manually
+    if (!appId) {
+      form.setError('appId', {
+        type: 'required',
+        message: 'App is required',
+      });
       return;
     }
 
@@ -89,7 +113,7 @@ const ActionSheet = ({
       return;
     }
 
-    if (!formData.connectionId) {
+    if (!connectionId) {
       form.setError('connectionId', {
         type: 'required',
         message: 'Connection is required',
@@ -97,40 +121,49 @@ const ActionSheet = ({
       return;
     }
 
-    const actionData = {
-      appId: formData.appId,
-      triggerId: formData.actionId,
-      connectionId: formData.connectionId,
-      fields: fieldData || {},
+    // Find the source node to calculate position
+    const sourceNode = nodes.find((n) => n.id === sourceNodeId);
+    if (!sourceNode) {
+      console.error('Source node not found');
+      return;
+    }
+
+    const nodeDetails: Node = {
+      id: '',
+      type: 'actionNode',
+      position: {
+        x: sourceNode.position.x + 350,
+        y: sourceNode.position.y,
+      },
+      data: {
+        appId: formData.appId,
+        actionId: formData.actionId,
+        fields: fieldData || {},
+      },
     };
 
-    const actionNodeId = `action-${Date.now()}`;
+    const { id } = await mutateAsync(nodeDetails);
+
+    const actionNodeId = `action-${id}`;
+    nodeDetails.id = actionNodeId;
     const addActionButtonId = `add-action-${actionNodeId}`;
 
     setNodes((prev) => {
-      const sourceNode = prev.find((n) => n.id === sourceNodeId);
-      if (!sourceNode) return prev;
-
-      const newX = sourceNode.position.x + 350;
-      const newY = sourceNode.position.y;
-
       const oldButtonId = `add-action-${sourceNodeId}`;
       const filtered = prev.filter((n) => n.id !== oldButtonId);
 
       return [
         ...filtered,
         {
-          id: actionNodeId,
-          type: 'actionNode',
-          position: { x: newX, y: newY },
-          data: {
-            ...actionData,
-          },
+          ...nodeDetails,
         },
         {
           id: addActionButtonId,
           type: 'addActionButton',
-          position: { x: newX + 350, y: newY },
+          position: {
+            x: nodeDetails.position.x + 350,
+            y: nodeDetails.position.y,
+          },
           data: {
             onAddClick: () => {
               setSelectedSourceNodeId(actionNodeId);
@@ -183,11 +216,12 @@ const ActionSheet = ({
         <form className="space-y-6 px-4">
           <Controller
             control={form.control}
-            name="appId"
+            name={'appId'}
             render={({ field, fieldState }) => (
               <Field>
                 <FieldLabel>Choose an app</FieldLabel>
                 <Select
+                  name={field.name}
                   value={field.value}
                   onValueChange={(value) => {
                     field.onChange(value);
@@ -200,7 +234,7 @@ const ActionSheet = ({
                   </SelectTrigger>
                   <SelectContent>
                     {apps
-                      .filter((a) => a.actions.length > 0)
+                      .filter((app) => app.actions.length > 0)
                       .map((app) => (
                         <SelectItem key={app.id} value={app.id}>
                           {app.name}
@@ -235,7 +269,9 @@ const ActionSheet = ({
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => form.setValue('connectionId', '')}
+                      onClick={() => {
+                        form.setValue('connectionId', '');
+                      }}
                     >
                       Disconnect
                     </Button>
@@ -255,13 +291,17 @@ const ActionSheet = ({
               render={({ field, fieldState }) => (
                 <Field>
                   <FieldLabel>Choose an action</FieldLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    name={field.name}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select an action" />
                     </SelectTrigger>
                     <SelectContent>
                       {apps
-                        .find((a) => a.id === appId)
+                        .find((app) => app.id === appId)
                         ?.actions.map((action) => (
                           <SelectItem key={action.id} value={action.id}>
                             {action.name}
@@ -278,6 +318,7 @@ const ActionSheet = ({
           )}
         </form>
 
+        {/* Configure */}
         {selectedAction && selectedAction.fields.length > 0 && (
           <div className="mt-6 px-4">
             <div className="mb-4">
@@ -290,15 +331,8 @@ const ActionSheet = ({
               fields={selectedAction.fields}
               onSubmit={onSubmit}
               submitLabel="Add action"
+              isLoading={isPending}
             />
-          </div>
-        )}
-
-        {selectedAction && selectedAction.fields.length === 0 && (
-          <div className="mt-6 px-4">
-            <Button className="w-full" onClick={() => onSubmit({})}>
-              Add action
-            </Button>
           </div>
         )}
       </SheetContent>

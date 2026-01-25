@@ -1,35 +1,19 @@
 import {
   ConditionOperator,
-  ITriggerMetadata,
   StepType,
   WorkflowStatus,
 } from '@repo/common/types';
+import { addStepSchema, updateStepSchema } from '@repo/common/validators';
 import { and, eq, gte } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
-import z from 'zod';
 import db from '../db';
 import { stepConditions, steps, workflows } from '../db/schema';
 import { asyncHandler, CustomErrorHandler, ResponseHandler } from '../utils';
 
-const stepSchema = z
-  .object({
-    app: z.string(),
-    metadata: z.any(),
-    index: z.number(),
-    connectionId: z.string(),
-    type: z.enum([StepType.TRIGGER, StepType.ACTION]),
-  })
-  .refine((data) => data.index == 0 && data.type == StepType.ACTION, {
-    message: 'First step must be an trigger step',
-  })
-  .refine((data) => data.index > 0 && data.type == StepType.TRIGGER, {
-    message: 'Steps after the first step must be action steps',
-  });
-
 export const addStep = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { workflowId } = req.params;
-    const body = stepSchema.parse(req.body);
+    const body = addStepSchema.parse(req.body);
     const { app, metadata, index, type, connectionId } = body;
 
     const [newStep] = await db
@@ -49,7 +33,7 @@ export const addStep = asyncHandler(
     }
 
     if (type == StepType.TRIGGER) {
-      const { field, operator, value } = (metadata as ITriggerMetadata).fields;
+      const { field, operator, value } = metadata.data.fields;
       await db.insert(stepConditions).values({
         stepId: newStep.id,
         field,
@@ -59,23 +43,6 @@ export const addStep = asyncHandler(
     }
 
     return res.status(201).send(ResponseHandler(201, 'Step added', newStep));
-  },
-);
-
-export const getAllSteps = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const { workflowId } = req.params;
-
-    const stepsDetails = await db.query.steps.findMany({
-      where: eq(steps.workflowId, workflowId as string),
-      with: {
-        stepConditions: true,
-      },
-    });
-
-    return res
-      .status(200)
-      .send(ResponseHandler(200, 'Steps fetched successfully', stepsDetails));
   },
 );
 
@@ -144,34 +111,36 @@ export const deleteStep = asyncHandler(
 export const updateStep = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { workflowId, stepId } = req.params;
-    const body = stepSchema.parse(req.body);
-    const { app, metadata, index, type, connectionId } = body;
 
-    const stepDetails = await db.query.steps.findFirst({
+    const body = updateStepSchema.parse(req.body);
+
+    if (Object.keys(body).length === 0) {
+      return next(CustomErrorHandler.badRequest('Nothing to update'));
+    }
+
+    const step = await db.query.steps.findFirst({
       where: and(
         eq(steps.workflowId, workflowId as string),
         eq(steps.id, stepId as string),
       ),
     });
 
-    if (!stepDetails) {
+    if (!step) {
       return next(CustomErrorHandler.notFound('Step not found'));
     }
 
     const [updatedStep] = await db
       .update(steps)
-      .set({
-        app,
-        metadata,
-        index,
-        type,
-        connectionId,
-      })
+      .set(body)
       .where(eq(steps.id, stepId as string))
       .returning();
 
-    if (type == StepType.TRIGGER) {
-      const { field, operator, value } = (metadata as ITriggerMetadata).fields;
+    if (!updatedStep) {
+      return next(CustomErrorHandler.serverError());
+    }
+
+    if (updatedStep.type === StepType.TRIGGER && body.metadata) {
+      const { field, operator, value } = body.metadata.data.fields;
       await db
         .update(stepConditions)
         .set({
@@ -182,8 +151,10 @@ export const updateStep = asyncHandler(
         .where(eq(stepConditions.stepId, stepId as string));
     }
 
-    return res
-      .status(200)
-      .send(ResponseHandler(200, 'Step updated successfully', updatedStep));
+    return res.status(200).send(
+      ResponseHandler(200, 'Step updated successfully', {
+        id: updatedStep.id,
+      }),
+    );
   },
 );

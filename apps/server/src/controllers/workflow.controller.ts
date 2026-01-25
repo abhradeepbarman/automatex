@@ -1,7 +1,7 @@
+import { and, eq } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
 import db from '../db';
-import { workflows } from '../db/schema';
-import { and, eq } from 'drizzle-orm';
+import { steps, workflows } from '../db/schema';
 import { asyncHandler, CustomErrorHandler, ResponseHandler } from '../utils';
 
 export const createWorkflow = asyncHandler(
@@ -100,6 +100,11 @@ export const getWorkflow = asyncHandler(
 
     const workflowDetails = await db.query.workflows.findFirst({
       where: and(eq(workflows.id, id as string), eq(workflows.userId, userId)),
+      with: {
+        steps: {
+          orderBy: (steps, { asc }) => [asc(steps.index)],
+        },
+      },
     });
 
     if (!workflowDetails) {
@@ -123,6 +128,10 @@ export const getAllWorkflows = asyncHandler(
     const workflowsDetails = await db.query.workflows.findMany({
       where: eq(workflows.userId, userId),
     });
+
+    if (!workflowsDetails) {
+      return next(CustomErrorHandler.notFound('Workflows not found'));
+    }
 
     return res
       .status(200)

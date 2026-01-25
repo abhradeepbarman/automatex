@@ -10,7 +10,8 @@ export const stepConditions = pgTable('step_conditions', {
       onDelete: 'cascade',
       onUpdate: 'no action',
     })
-    .notNull(),
+    .notNull()
+    .unique(),
   field: varchar('field').notNull(),
   operator: varchar('operator').notNull(),
   value: varchar('value', {

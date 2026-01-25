@@ -1,8 +1,12 @@
-import apps from '@repo/common/@apps';
+import stepService from '@/services/step.service';
 import { zodResolver } from '@hookform/resolvers/zod';
+import apps from '@repo/common/@apps';
+import { StepType } from '@repo/common/types';
+import { useMutation } from '@tanstack/react-query';
 import type { Edge, Node } from '@xyflow/react';
 import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useParams } from 'react-router-dom';
 import z from 'zod';
 import ConnectBtn from '../common/connect-btn';
 import DynamicForm from '../common/dynamic-form';
@@ -22,7 +26,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '../ui/sheet';
-import type { ITriggerMetadata } from '@repo/common/types';
 
 interface ITriggerSheetProps {
   open: boolean;
@@ -41,6 +44,7 @@ const TriggerSheet = ({
   setSelectedSourceNodeId,
   setActionSheetOpen,
 }: ITriggerSheetProps) => {
+  const { id: workflowId } = useParams();
   const triggerSheetSchema = z.object({
     appId: z.string().min(1, 'Please select an app'),
     triggerId: z.string().min(1, 'Please select a trigger'),
@@ -54,6 +58,19 @@ const TriggerSheet = ({
       triggerId: '',
       connectionId: '',
     },
+  });
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationKey: ['create-trigger'],
+    mutationFn: (metadata: Node) =>
+      stepService.addStep(
+        workflowId!,
+        appId,
+        0,
+        StepType.TRIGGER,
+        connectionId,
+        metadata,
+      ),
   });
 
   const [appId, triggerId] = useWatch({
@@ -100,30 +117,31 @@ const TriggerSheet = ({
       return;
     }
 
-    const triggerMetadata: ITriggerMetadata = {
-      appId: formData.appId,
-      triggerId: formData.triggerId,
-      connectionId: formData.connectionId,
-      fields: fieldData || {},
+    const nodeDetails: Node = {
+      id: '',
+      type: 'triggerNode',
+      position: { x: 100, y: 100 },
+      data: {
+        appId: formData.appId,
+        triggerId: formData.triggerId,
+        fields: fieldData || {},
+      },
     };
 
-    const triggerNodeId = `trigger-${Date.now()}`;
+    const { id } = await mutateAsync(nodeDetails);
+
+    const triggerNodeId = (nodeDetails.id = `trigger-${id}`);
     const addActionButtonId = `add-action-${triggerNodeId}`;
 
     setNodes((prev) => [
       ...prev.filter((n) => n.type !== 'addTriggerButton'),
       {
-        id: triggerNodeId,
-        type: 'triggerNode',
-        position: { x: 0, y: 0 },
-        data: {
-          ...triggerMetadata,
-        },
+        ...nodeDetails,
       },
       {
         id: addActionButtonId,
         type: 'addActionButton',
-        position: { x: 350, y: 0 },
+        position: { x: 450, y: 100 },
         data: {
           onAddClick: () => {
             setSelectedSourceNodeId(triggerNodeId);
@@ -280,6 +298,7 @@ const TriggerSheet = ({
               fields={selectedTrigger.fields}
               onSubmit={onSubmit}
               submitLabel="Add trigger"
+              isLoading={isPending}
             />
           </div>
         )}

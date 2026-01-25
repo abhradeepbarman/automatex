@@ -62,15 +62,3 @@ export interface IAction {
   description: string;
   fields: FieldConfig[];
 }
-
-export interface ITriggerMetadata {
-  appId: string;
-  triggerId: string;
-  fields: ITriggerFields;
-}
-
-export interface ITriggerFields {
-  field: string;
-  operator: string;
-  value: string;
-}

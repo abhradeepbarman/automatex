@@ -3,7 +3,12 @@ import cors from 'cors';
 import express, { Application, NextFunction, Request, Response } from 'express';
 import config from './config';
 import { errorHandler } from './middlewares';
-import { authRoutes, credentialRoutes, workflowRoutes } from './routes';
+import {
+  authRoutes,
+  credentialRoutes,
+  stepRoutes,
+  workflowRoutes,
+} from './routes';
 
 const app: Application = express();
 
@@ -26,6 +31,7 @@ app.get('/', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/workflow', workflowRoutes);
 app.use('/api/v1/credential', credentialRoutes);
+app.use('/api/v1/step', stepRoutes);
 
 // global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
