@@ -1,7 +1,7 @@
+import db from '@repo/db';
+import { workflows } from '@repo/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
-import db from '../db';
-import { steps, workflows } from '../db/schema';
 import { asyncHandler, CustomErrorHandler, ResponseHandler } from '../utils';
 
 export const createWorkflow = asyncHandler(
@@ -31,14 +31,17 @@ export const updateWorkflow = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
     const { id: userId } = req.user;
-    const { name, status } = req.body;
+    const { name, isActive } = req.body;
 
-    if (!name && !status) {
+    if (!name && isActive === undefined) {
       return next(CustomErrorHandler.badRequest());
     }
 
     const workflowDetails = await db.query.workflows.findFirst({
       where: and(eq(workflows.id, id as string), eq(workflows.userId, userId)),
+      with: {
+        steps: true,
+      },
     });
 
     if (!workflowDetails) {
@@ -49,11 +52,19 @@ export const updateWorkflow = asyncHandler(
       return next(CustomErrorHandler.notAllowed());
     }
 
+    if (isActive && workflowDetails.steps.length < 2) {
+      return next(
+        CustomErrorHandler.badRequest(
+          'Workflow must have atleast a trigger & action',
+        ),
+      );
+    }
+
     const [updatedWorkflow] = await db
       .update(workflows)
       .set({
         name: name ?? workflowDetails.name,
-        status: status ?? workflowDetails.status,
+        isActive: isActive ?? workflowDetails.isActive,
         updatedAt: new Date(),
       })
       .where(eq(workflows.id, id as string))
@@ -134,46 +145,18 @@ export const getAllWorkflows = asyncHandler(
       .where(eq(workflows.userId, userId));
     const totalCount = totalCountResult.length;
 
-    const workflowsDetails = await db.query.workflows.findMany({
+    const allWorkflows = await db.query.workflows.findMany({
       where: eq(workflows.userId, userId),
-      with: {
-        steps: {
-          columns: {
-            lastExecutedAt: true,
-          },
-        },
-      },
       limit,
       offset,
       orderBy: (workflows, { desc }) => [desc(workflows.createdAt)],
-    });
-
-    const workflowsWithLastExecuted = workflowsDetails.map((workflow) => {
-      const lastExecutedAt = workflow.steps.reduce(
-        (latest, step) => {
-          if (!step.lastExecutedAt) return latest;
-          if (!latest) return step.lastExecutedAt;
-          return step.lastExecutedAt > latest ? step.lastExecutedAt : latest;
-        },
-        null as Date | null,
-      );
-
-      return {
-        id: workflow.id,
-        name: workflow.name,
-        userId: workflow.userId,
-        status: workflow.status,
-        createdAt: workflow.createdAt,
-        updatedAt: workflow.updatedAt,
-        lastExecutedAt,
-      };
     });
 
     const totalPages = Math.ceil(totalCount / limit);
 
     return res.status(200).send(
       ResponseHandler(200, 'Workflows details', {
-        workflows: workflowsWithLastExecuted,
+        workflows: allWorkflows,
         pagination: {
           page,
           limit,

@@ -1,13 +1,9 @@
-import {
-  ConditionOperator,
-  StepType,
-  WorkflowStatus,
-} from '@repo/common/types';
+import { ConditionOperator, StepType } from '@repo/common/types';
 import { addStepSchema, updateStepSchema } from '@repo/common/validators';
 import { and, eq, gte } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
-import db from '../db';
-import { stepConditions, steps, workflows } from '../db/schema';
+import db from '@repo/db';
+import { stepConditions, steps, workflows } from '@repo/db/schema';
 import { asyncHandler, CustomErrorHandler, ResponseHandler } from '../utils';
 
 export const addStep = asyncHandler(
@@ -97,7 +93,7 @@ export const deleteStep = asyncHandler(
       await db
         .update(workflows)
         .set({
-          status: WorkflowStatus.INACTIVE,
+          isActive: false,
         })
         .where(eq(workflows.id, workflowId as string));
     }

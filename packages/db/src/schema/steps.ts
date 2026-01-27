@@ -1,3 +1,4 @@
+import { StepType } from '@repo/common/types';
 import { relations } from 'drizzle-orm';
 import {
   integer,
@@ -7,10 +8,10 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
+import { connections } from './connections';
+import { executions } from './executions';
 import { stepConditions } from './step-conditions';
 import { workflows } from './workflows';
-import { StepType } from '@repo/common/types';
-import { connections } from './connections';
 
 export const steps = pgTable('steps', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
@@ -25,14 +26,13 @@ export const steps = pgTable('steps', {
   }).notNull(),
   index: integer('index').notNull(),
   app: varchar('app').notNull(),
-  metadata: jsonb('metadata').notNull(),
+  metadata: jsonb('metadata'),
   connectionId: uuid('connection_id').references(() => connections.id),
-  lastExecutedAt: timestamp('last_executed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const stepRelations = relations(steps, ({ one }) => ({
+export const stepRelations = relations(steps, ({ one, many }) => ({
   workflows: one(workflows, {
     fields: [steps.workflowId],
     references: [workflows.id],
@@ -45,4 +45,5 @@ export const stepRelations = relations(steps, ({ one }) => ({
     fields: [steps.connectionId],
     references: [connections.id],
   }),
+  executions: many(executions),
 }));

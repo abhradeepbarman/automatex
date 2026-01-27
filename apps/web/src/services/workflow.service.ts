@@ -1,12 +1,11 @@
 import axiosInstance from '@/lib/axios';
-import { WorkflowStatus } from '@repo/common/types';
 import type { Node } from '@xyflow/react';
 
 export interface ICreateWorkflowResponse {
   id: string;
   name: string;
   userId: string;
-  status: WorkflowStatus;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -15,7 +14,7 @@ export interface IGetWorkflowResponse {
   id: string;
   name: string;
   userId: string;
-  status: WorkflowStatus;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
   steps: {
@@ -37,7 +36,7 @@ export interface IGetAllWorkflowsResponse {
     id: string;
     name: string;
     userId: string;
-    status: WorkflowStatus;
+    isActive: boolean;
     createdAt: string;
     updatedAt: string;
     lastExecutedAt: string | null;
@@ -79,14 +78,10 @@ class WorkflowService {
     return data.data;
   }
 
-  async updateWorkflow(
-    workflowId: string,
-    name?: string,
-    status?: WorkflowStatus,
-  ) {
+  async updateWorkflow(workflowId: string, name?: string, isActive?: boolean) {
     const { data } = await axiosInstance.put(`/workflow/${workflowId}`, {
       name,
-      status,
+      isActive,
     });
     return data.data;
   }

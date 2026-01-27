@@ -13,14 +13,14 @@ export const stepConditions = pgTable('step_conditions', {
     .notNull()
     .unique(),
   field: varchar('field').notNull(),
-  operator: varchar('operator').notNull(),
-  value: varchar('value', {
+  operator: varchar('operator', {
     enum: [
       ConditionOperator.EQUAL,
       ConditionOperator.NOT_EQUAL,
       ConditionOperator.CONTAINS,
     ],
   }).notNull(),
+  value: varchar('value').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

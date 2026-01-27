@@ -24,7 +24,7 @@ import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Pencil, Check, X, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { WorkflowStatus } from '@repo/common/types';
+import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -149,7 +149,7 @@ const Dashboard = () => {
                     key={workflow.id}
                     id={workflow.id}
                     name={workflow.name}
-                    status={workflow.status}
+                    isActive={workflow.isActive}
                     lastRun={formatLastRun(workflow.lastExecutedAt)}
                     createdAt={workflow.createdAt}
                     onClick={() => navigate(`/workflow/${workflow.id}`)}
@@ -178,7 +178,6 @@ const Dashboard = () => {
                       (_, i) => i + 1,
                     )
                       .filter((p) => {
-                        // Show first page, last page, current page, and pages around current
                         return (
                           p === 1 ||
                           p === pagination.totalPages ||
@@ -186,7 +185,6 @@ const Dashboard = () => {
                         );
                       })
                       .map((pageNum, idx, arr) => {
-                        // Add ellipsis if there's a gap
                         const showEllipsisBefore =
                           idx > 0 && pageNum - arr[idx - 1] > 1;
 
@@ -249,14 +247,14 @@ const StatCard = ({ title, value }: { title: string; value: string }) => {
 const WorkflowItem = ({
   id,
   name,
-  status,
+  isActive,
   lastRun,
   createdAt,
   onClick,
 }: {
   id: string;
   name: string;
-  status: WorkflowStatus;
+  isActive: boolean;
   lastRun: string;
   createdAt: string;
   onClick?: () => void;
@@ -288,12 +286,12 @@ const WorkflowItem = ({
 
   const { mutate: toggleWorkflowStatus, isPending: isStatusPending } =
     useMutation({
-      mutationFn: (newStatus: WorkflowStatus) =>
-        workflowService.updateWorkflow(id, undefined, newStatus),
-      onSuccess: () => {
+      mutationFn: (newIsActive: boolean) =>
+        workflowService.updateWorkflow(id, undefined, newIsActive),
+      onSuccess: (_, newIsActive) => {
         queryClient.invalidateQueries({ queryKey: ['workflows'] });
         toast.success(
-          `Workflow ${status === WorkflowStatus.ACTIVE ? 'paused' : 'activated'} successfully`,
+          `Workflow ${newIsActive ? 'activated' : 'paused'} successfully`,
         );
       },
       onError: (error: AxiosError<{ message: string }>) => {
@@ -343,15 +341,6 @@ const WorkflowItem = ({
     } else if (e.key === 'Escape') {
       handleCancel();
     }
-  };
-
-  const handleStatusToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const newStatus =
-      status === WorkflowStatus.ACTIVE
-        ? WorkflowStatus.INACTIVE
-        : WorkflowStatus.ACTIVE;
-    toggleWorkflowStatus(newStatus);
   };
 
   const handleDelete = () => {
@@ -447,7 +436,7 @@ const WorkflowItem = ({
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        variant="destructive"
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         onClick={handleDelete}
                         disabled={isDeletePending}
                       >
@@ -470,23 +459,19 @@ const WorkflowItem = ({
         )}
       </div>
 
-      <Button
-        variant="outline"
-        size="sm"
-        className={
-          status === WorkflowStatus.ACTIVE
-            ? 'border-emerald-500/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 flex-shrink-0'
-            : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100 flex-shrink-0'
-        }
-        onClick={handleStatusToggle}
-        disabled={isStatusPending}
+      <div
+        className="flex items-center gap-2 flex-shrink-0"
+        onClick={(e) => e.stopPropagation()}
       >
-        {isStatusPending
-          ? 'Updating...'
-          : status === WorkflowStatus.ACTIVE
-            ? 'Pause'
-            : 'Activate'}
-      </Button>
+        <span className="text-xs text-muted-foreground">
+          {isActive ? 'Active' : 'Inactive'}
+        </span>
+        <Switch
+          checked={isActive}
+          onCheckedChange={toggleWorkflowStatus}
+          disabled={isStatusPending}
+        />
+      </div>
     </div>
   );
 };

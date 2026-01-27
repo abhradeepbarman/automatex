@@ -1,12 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
-import db from '../db';
 import { loginSchema, registerSchema } from '@repo/common/validators';
 import { and, eq } from 'drizzle-orm';
-import { users } from '../db/schema';
 import bcrypt from 'bcryptjs';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import config from '../config';
 import { asyncHandler, CustomErrorHandler, ResponseHandler } from '../utils';
+import db from '@repo/db';
+import { users } from '@repo/db/schema';
 
 export const generateTokens = (userId: string) => {
   const accessToken = jwt.sign({ id: userId }, config.ACCESS_SECRET, {

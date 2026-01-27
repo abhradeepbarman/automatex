@@ -2,8 +2,8 @@ import apps from '@repo/common/@apps';
 import { NextFunction, Request, Response } from 'express';
 import { asyncHandler, CustomErrorHandler, ResponseHandler } from '../utils';
 import axios from 'axios';
-import db from '../db';
-import { connections } from '../db/schema';
+import db from '@repo/db';
+import { connections } from '@repo/db/schema';
 
 export const getAuthUrl = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {

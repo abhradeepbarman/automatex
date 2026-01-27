@@ -1,8 +1,3 @@
-export enum WorkflowStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-}
-
 export enum ConditionOperator {
   EQUAL = 'EQUAL',
   NOT_EQUAL = 'NOT_EQUAL',
@@ -12,6 +7,17 @@ export enum ConditionOperator {
 export enum StepType {
   TRIGGER = 'TRIGGER',
   ACTION = 'ACTION',
+}
+
+export enum ExecutionResult {
+  SUCCESS = 'SUCCESS',
+  FAILURE = 'FAILURE',
+}
+
+export enum ExecutionStatus {
+  PENDING = 'PENDING',
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
 }
 
 export type FieldConfig = {
@@ -53,6 +59,7 @@ export interface ITrigger {
   id: string;
   name: string;
   description: string;
+  pollingIntervalMs: number;
   fields: FieldConfig[];
 }
 

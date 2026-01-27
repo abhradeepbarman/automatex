@@ -5,6 +5,7 @@ const newEmail: ITrigger = {
   id: 'NEW_EMAIL',
   name: 'New email',
   description: 'Triggered when a new email is received',
+  pollingIntervalMs: 120,
 
   fields: [
     {
