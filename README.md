@@ -1,135 +1,107 @@
-# Turborepo starter
+# Automatex
 
-This Turborepo starter is maintained by the Turborepo core team.
+Automatex is a powerful workflow automation platform designed to integrate various services and execute complex workflows efficiently. It allows users to create triggers and actions to automate tasks across different applications like Gmail, Discord, and more.
 
-## Using this example
+## Architecture
 
-Run the following command:
+The project is a monorepo built with [Turborepo](https://turbo.build/repo) and consists of the following applications:
 
-```sh
-npx create-turbo@latest
+### Apps
+
+- **`web`**: The frontend dashboard built with [Vite](https://vitejs.dev/), [React](https://react.dev/), and [Tailwind CSS](https://tailwindcss.com/). It provides a user-friendly interface for managing workflows, viewing dashboard statistics, and configuring integrations.
+- **`server`**: The backend API built with [Express](https://expressjs.com/) and [Node.js](https://nodejs.org/). It handles user authentication, workflow management, and communicates with the database.
+- **`executor`**: A specialized worker service that executes the automation workflows. It uses [BullMQ](https://docs.bullmq.io/) and [Redis](https://redis.io/) for job queuing and processing.
+
+### Packages
+
+- **`@repo/common`**: Shared utilities, constants, and Zod schemas used across applications.
+- **`@repo/db`**: Database schema and ORM configuration using [Drizzle ORM](https://orm.drizzle.team/) and PostgreSQL.
+- **`@repo/eslint-config`**: Shared ESLint configurations.
+- **`@repo/typescript-config`**: Shared TypeScript configurations.
+
+## Tech Stack
+
+- **Monorepo Tool**: Turborepo
+- **Package Manager**: pnpm
+- **Frontend**: React, Vite, Tailwind CSS, Radix UI, Lucide React
+- **Backend**: Node.js, Express
+- **Database**: PostgreSQL, Drizzle ORM
+- **Queue/Workers**: BullMQ, Redis
+- **Language**: TypeScript
+
+## Getting Started
+
+### Prerequisites
+
+Ensure you have the following installed on your machine:
+
+- [Node.js](https://nodejs.org/) (>= 18)
+- [pnpm](https://pnpm.io/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [Redis](https://redis.io/)
+
+### Installation
+
+1.  Clone the repository:
+
+    ```bash
+    git clone https://github.com/abhradeepbarman/automatex.git
+    cd automatex
+    ```
+
+2.  Install dependencies:
+
+    ```bash
+    pnpm install
+    ```
+
+3.  Set up environment variables:
+
+    Copy the sample environment files and configure them with your credentials.
+
+    ```bash
+    # Root (if applicable) or individual apps
+    cp apps/server/.env.sample apps/server/.env
+    cp apps/web/.env.sample apps/web/.env
+    cp apps/executor/.env.sample apps/executor/.env
+    ```
+
+    Update the `.env` files with your database URL, Redis connection string, and other necessary secrets.
+
+4.  Database Migration:
+
+    Run the database migrations to set up the schema.
+
+    ```bash
+    # Using the filter to run the migrate script in the db package
+    pnpm --filter @repo/db db:migrate
+    ```
+
+### Running the Project
+
+To start all applications in development mode:
+
+```bash
+pnpm dev
 ```
 
-## What's inside?
+This command uses Turbo to run the `dev` script in all apps (`web`, `server`, `executor`) simultaneously.
 
-This Turborepo includes the following packages/apps:
+- **Web Dashboard**: http://localhost:5173 (default Vite port)
+- **API Server**: http://localhost:3000 (check logs for actual port)
 
-### Apps and Packages
+### Building
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+To build all apps and packages:
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+```bash
+pnpm build
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+## Contributing
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+1.  Fork the project
+2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
