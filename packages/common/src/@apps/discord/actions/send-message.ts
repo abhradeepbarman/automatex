@@ -10,9 +10,14 @@ export const sendMessage: IAction = {
     {
       name: 'channelId',
       label: 'Channel ID',
-      type: 'text',
-      placeholder: '1234567890',
-      description: 'The ID of the Discord channel to send the message to',
+      type: 'select',
+      placeholder: 'Select a channel',
+      description: 'The Discord server/guild to monitor',
+      dynamicOptions: {
+        url: 'https://discord.com/api/users/@me/guilds',
+        labelKey: 'name',
+        valueKey: 'id',
+      },
       validations: () => z.string().nonempty('Channel ID is required'),
     },
     {

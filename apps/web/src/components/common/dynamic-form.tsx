@@ -11,7 +11,7 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type FieldConfig } from '@repo/common/types';
 import { useQuery } from '@tanstack/react-query';
-import axiosInstance from '@/lib/axios';
+import proxyService from '@/services/proxy.service';
 import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -134,13 +134,11 @@ const DynamicForm = ({
                   ],
                   queryFn: async () => {
                     if (!field.dynamicOptions || !connectionId) return [];
-                    const { data } = await axiosInstance.get('/proxy', {
-                      params: {
-                        url: field.dynamicOptions.url,
-                        connectionId,
-                      },
-                    });
-                    return data.data.map((item: any) => ({
+                    const data = await proxyService.getDynamicOptions(
+                      field.dynamicOptions.url,
+                      connectionId,
+                    );
+                    return data.map((item: any) => ({
                       label: item[field.dynamicOptions!.labelKey],
                       value: item[field.dynamicOptions!.valueKey],
                     }));

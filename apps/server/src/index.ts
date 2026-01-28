@@ -9,6 +9,7 @@ import {
   proxyRoutes,
   stepRoutes,
   workflowRoutes,
+  dashboardRoutes,
 } from './routes';
 
 const app: Application = express();
@@ -34,6 +35,7 @@ app.use('/api/v1/workflow', workflowRoutes);
 app.use('/api/v1/credential', credentialRoutes);
 app.use('/api/v1/proxy', proxyRoutes);
 app.use('/api/v1/step', stepRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 
 // global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

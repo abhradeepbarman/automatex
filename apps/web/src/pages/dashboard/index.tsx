@@ -16,6 +16,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import workflowService from '@/services/workflow.service';
+import dashboardService from '@/services/dashboard.service';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -90,6 +91,11 @@ const Dashboard = () => {
   const workflows = workflowsData?.workflows || [];
   const pagination = workflowsData?.pagination;
 
+  const { data: stats } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: dashboardService.getStats,
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -117,10 +123,16 @@ const Dashboard = () => {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
               title="Workflows"
-              value={pagination?.total.toString() || '0'}
+              value={stats?.totalWorkflows?.toString() || '0'}
             />
-            <StatCard title="Runs (30 days)" value="0" />
-            <StatCard title="Errors" value="0" />
+            <StatCard
+              title="Runs (30 days)"
+              value={stats?.totalRuns?.toString() || '0'}
+            />
+            <StatCard
+              title="Errors"
+              value={stats?.totalErrors?.toString() || '0'}
+            />
           </div>
 
           <Card className="border-border/50 shadow-sm">
@@ -377,7 +389,7 @@ const WorkflowItem = ({
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 flex-shrink-0"
+              className="h-8 w-8 p-0 shrink-0"
               onClick={handleSave}
               disabled={isRenamePending}
             >
@@ -386,7 +398,7 @@ const WorkflowItem = ({
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 flex-shrink-0"
+              className="h-8 w-8 p-0 shrink-0"
               onClick={handleCancel}
               disabled={isRenamePending}
             >
@@ -401,7 +413,7 @@ const WorkflowItem = ({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 w-6 p-0 flex-shrink-0"
+                  className="h-6 w-6 p-0 shrink-0"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsEditing(true);
@@ -417,7 +429,7 @@ const WorkflowItem = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-6 w-6 p-0 flex-shrink-0"
+                      className="h-6 w-6 p-0 shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                       }}
@@ -460,7 +472,7 @@ const WorkflowItem = ({
       </div>
 
       <div
-        className="flex items-center gap-2 flex-shrink-0"
+        className="flex items-center gap-2 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-xs text-muted-foreground">
