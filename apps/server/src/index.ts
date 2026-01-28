@@ -6,6 +6,7 @@ import { errorHandler } from './middlewares';
 import {
   authRoutes,
   credentialRoutes,
+  proxyRoutes,
   stepRoutes,
   workflowRoutes,
 } from './routes';
@@ -31,6 +32,7 @@ app.get('/', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/workflow', workflowRoutes);
 app.use('/api/v1/credential', credentialRoutes);
+app.use('/api/v1/proxy', proxyRoutes);
 app.use('/api/v1/step', stepRoutes);
 
 // global error handler

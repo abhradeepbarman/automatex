@@ -1,5 +1,6 @@
-import gmail from './gmail';
+import { gmail } from './gmail';
+import { discord } from './discord';
 
-const apps = [gmail];
+const apps = [gmail, discord];
 
 export default apps;

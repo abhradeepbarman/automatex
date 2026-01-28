@@ -248,7 +248,16 @@ const ActionSheet = ({
                       .filter((app) => app.actions.length > 0)
                       .map((app) => (
                         <SelectItem key={app.id} value={app.id}>
-                          {app.name}
+                          <div className="flex items-center gap-2">
+                            {app.icon && (
+                              <img
+                                src={app.icon}
+                                alt={app.name}
+                                className="h-5 w-5 object-contain"
+                              />
+                            )}
+                            <span>{app.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -261,43 +270,6 @@ const ActionSheet = ({
           {appId && (
             <Controller
               control={form.control}
-              name="connectionId"
-              render={({ fieldState }) => (
-                <Field>
-                  <FieldLabel>App connection</FieldLabel>
-                  <FieldDescription className="pb-2">
-                    Connect your account to use this action
-                  </FieldDescription>
-                  {!connectionId ? (
-                    <ConnectBtn
-                      appId={appId}
-                      onAuthSuccess={(id: string) => {
-                        form.setValue('connectionId', id);
-                        form.clearErrors('connectionId');
-                      }}
-                    />
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        form.setValue('connectionId', '');
-                      }}
-                    >
-                      Disconnect
-                    </Button>
-                  )}
-                  {fieldState.error && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-          )}
-
-          {appId && (
-            <Controller
-              control={form.control}
               name="actionId"
               render={({ field, fieldState }) => (
                 <Field>
@@ -305,7 +277,10 @@ const ActionSheet = ({
                   <Select
                     name={field.name}
                     value={field.value}
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      form.setValue('connectionId', '');
+                    }}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select an action" />
@@ -329,8 +304,48 @@ const ActionSheet = ({
           )}
         </form>
 
+        {appId && actionId && (
+          <div className="px-4 pb-6">
+            <Controller
+              control={form.control}
+              name="connectionId"
+              render={({ fieldState }) => (
+                <Field>
+                  <FieldLabel>App connection</FieldLabel>
+                  <FieldDescription className="pb-2">
+                    Connect your account to use this action
+                  </FieldDescription>
+                  {!connectionId ? (
+                    <ConnectBtn
+                      appId={appId}
+                      stepType={actionId}
+                      onAuthSuccess={(id: string) => {
+                        form.setValue('connectionId', id);
+                        form.clearErrors('connectionId');
+                      }}
+                    />
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        form.setValue('connectionId', '');
+                      }}
+                    >
+                      Disconnect
+                    </Button>
+                  )}
+                  {fieldState.error && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
+          </div>
+        )}
+
         {/* Configure */}
-        {selectedAction && selectedAction.fields.length > 0 && (
+        {selectedAction && selectedAction.fields.length > 0 && connectionId && (
           <div className="mt-6 px-4">
             <div className="mb-4">
               <h3 className="text-sm font-medium">Configure action</h3>
@@ -343,6 +358,7 @@ const ActionSheet = ({
               onSubmit={onSubmit}
               submitLabel="Add action"
               isLoading={isPending}
+              connectionId={connectionId}
             />
           </div>
         )}

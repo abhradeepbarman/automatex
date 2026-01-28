@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type FieldConfig } from '@repo/common/types';
+import { useQuery } from '@tanstack/react-query';
+import axiosInstance from '@/lib/axios';
 import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -21,6 +23,7 @@ interface DynamicFormProps {
   onSubmit: (data: any) => void;
   submitLabel: string;
   isLoading: boolean;
+  connectionId?: string;
 }
 
 const DynamicForm = ({
@@ -28,6 +31,7 @@ const DynamicForm = ({
   onSubmit,
   submitLabel,
   isLoading,
+  connectionId,
 }: DynamicFormProps) => {
   const defaultValues = fields.reduce(
     (acc, field) => {
@@ -65,6 +69,7 @@ const DynamicForm = ({
             key={field.name}
             control={form.control}
             name={field.name}
+            defaultValue={field.defaultValue}
             render={({ field: formField, fieldState }) => (
               <Field>
                 <FieldLabel>{field.label}</FieldLabel>
@@ -74,6 +79,7 @@ const DynamicForm = ({
                   onChange={formField.onChange}
                   type={field.type}
                   placeholder={field.placeholder}
+                  disabled={field.disabled}
                 />
                 {field.description && (
                   <FieldDescription>{field.description}</FieldDescription>
@@ -90,6 +96,7 @@ const DynamicForm = ({
             key={field.name}
             control={form.control}
             name={field.name}
+            defaultValue={field.defaultValue}
             render={({ field: formField, fieldState }) => (
               <Field>
                 <FieldLabel>{field.label}</FieldLabel>
@@ -98,6 +105,7 @@ const DynamicForm = ({
                   value={formField.value}
                   onChange={formField.onChange}
                   placeholder={field.placeholder}
+                  disabled={field.disabled}
                   className="flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
                 />
                 {field.description && (
@@ -115,31 +123,70 @@ const DynamicForm = ({
             key={field.name}
             control={form.control}
             name={field.name}
-            render={({ field: formField, fieldState }) => (
-              <Field>
-                <FieldLabel>{field.label}</FieldLabel>
-                <Select
-                  name={formField.name}
-                  value={formField.value}
-                  onValueChange={formField.onChange}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={field.placeholder} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {field.options?.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {field.description && (
-                  <FieldDescription>{field.description}</FieldDescription>
-                )}
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
-              </Field>
-            )}
+            defaultValue={field.defaultValue}
+            render={({ field: formField, fieldState }) => {
+              const { data: dynamicOptions, isLoading: isLoadingOptions } =
+                useQuery({
+                  queryKey: [
+                    'dynamic-options',
+                    field.dynamicOptions?.url,
+                    connectionId,
+                  ],
+                  queryFn: async () => {
+                    if (!field.dynamicOptions || !connectionId) return [];
+                    const { data } = await axiosInstance.get('/proxy', {
+                      params: {
+                        url: field.dynamicOptions.url,
+                        connectionId,
+                      },
+                    });
+                    return data.data.map((item: any) => ({
+                      label: item[field.dynamicOptions!.labelKey],
+                      value: item[field.dynamicOptions!.valueKey],
+                    }));
+                  },
+                  enabled: !!field.dynamicOptions && !!connectionId,
+                });
+
+              const options = field.dynamicOptions
+                ? dynamicOptions
+                : field.options;
+
+              return (
+                <Field>
+                  <FieldLabel>{field.label}</FieldLabel>
+                  <Select
+                    name={formField.name}
+                    value={formField.value}
+                    onValueChange={formField.onChange}
+                    disabled={field.disabled}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={
+                          isLoadingOptions
+                            ? 'Loading...'
+                            : field.placeholder || 'Select an option'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {options?.map((option: any) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {field.description && (
+                    <FieldDescription>{field.description}</FieldDescription>
+                  )}
+                  {fieldState.error && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              );
+            }}
           />
         );
 
@@ -149,6 +196,7 @@ const DynamicForm = ({
             key={field.name}
             control={form.control}
             name={field.name}
+            defaultValue={field.defaultValue}
             render={({ field: formField, fieldState }) => (
               <Field>
                 <div className="flex items-start space-x-3 rounded-md border p-4">
@@ -156,6 +204,7 @@ const DynamicForm = ({
                     name={formField.name}
                     value={formField.value}
                     onChange={formField.onChange}
+                    disabled={field.disabled}
                   />
                   <div className="space-y-1">
                     <FieldLabel>{field.label}</FieldLabel>

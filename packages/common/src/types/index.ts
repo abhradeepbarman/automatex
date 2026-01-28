@@ -33,7 +33,14 @@ export type FieldConfig = {
     | 'date';
   placeholder?: string;
   description?: string;
+  disabled?: boolean;
   options?: { label: string; value: string }[];
+  dynamicOptions?: {
+    url: string;
+    labelKey: string;
+    valueKey: string;
+    dataPath?: string;
+  };
   validations?: () => any;
   defaultValue?: any;
 };
@@ -42,6 +49,13 @@ export enum AppType {
   GMAIL = 'gmail',
   NOTION = 'notion',
   GITHUB = 'github',
+  DISCORD = 'discord',
+}
+
+export interface TokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  expires_in: number;
 }
 
 export interface IApp {
@@ -52,7 +66,10 @@ export interface IApp {
   triggers: ITrigger[];
   actions: IAction[];
   getAuthUrl: () => string;
-  getTokenUrl: (code: string) => string;
+  getToken: (code: string) => Promise<TokenResponse>;
+  getUserInfo: (
+    accessToken: string,
+  ) => Promise<{ id: string; name: string; email: string }>;
 }
 
 export interface ITrigger {

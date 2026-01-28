@@ -4,7 +4,7 @@ import { pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { steps } from './steps';
 import { workflows } from './workflows';
 
-export const executions = pgTable('executions', {
+export const runs = pgTable('executions', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   workflowId: uuid('workflow_id')
     .notNull()
@@ -32,13 +32,13 @@ export const executions = pgTable('executions', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const executionRelations = relations(executions, ({ one }) => ({
+export const runRelations = relations(runs, ({ one }) => ({
   workflow: one(workflows, {
-    fields: [executions.workflowId],
+    fields: [runs.workflowId],
     references: [workflows.id],
   }),
   step: one(steps, {
-    fields: [executions.stepId],
+    fields: [runs.stepId],
     references: [steps.id],
   }),
 }));

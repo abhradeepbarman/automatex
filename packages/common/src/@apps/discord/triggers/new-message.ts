@@ -1,13 +1,26 @@
+import z from 'zod';
 import { ConditionOperator, type ITrigger } from '../../../types';
-import { z } from 'zod';
 
-export const newEmail: ITrigger = {
-  id: 'NEW_EMAIL',
-  name: 'New email',
-  description: 'Triggered when a new email is received',
+export const newMessage: ITrigger = {
+  id: 'NEW_MESSAGE',
+  name: 'New message',
+  description: 'Triggered when a new message is received in a channel',
   pollingIntervalMs: 120,
 
   fields: [
+    {
+      name: 'channelId',
+      label: 'Channel ID',
+      type: 'select',
+      placeholder: 'Select a channel',
+      description: 'The Discord server/guild to monitor',
+      dynamicOptions: {
+        url: 'https://discord.com/api/users/@me/guilds',
+        labelKey: 'name',
+        valueKey: 'id',
+      },
+      validations: () => z.string().nonempty('Channel ID is required'),
+    },
     {
       name: 'field',
       label: 'Select a field',
@@ -15,7 +28,10 @@ export const newEmail: ITrigger = {
       options: [
         { value: 'subject', label: 'Subject' },
         { value: 'body', label: 'Body' },
+        { value: 'content', label: 'Content' },
       ],
+      disabled: true,
+      defaultValue: 'content',
       validations: () => z.string().nonempty('Field is required'),
     },
     {

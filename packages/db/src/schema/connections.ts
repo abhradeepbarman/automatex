@@ -6,6 +6,8 @@ import { users } from './users';
 export const connections = pgTable('connections', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   app: varchar('app').notNull(),
+  stepType: varchar('step_type').notNull(),
+  connectionName: varchar('connection_name'),
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, {

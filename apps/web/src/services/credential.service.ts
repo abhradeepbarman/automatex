@@ -4,7 +4,7 @@ interface IGetAuthUrlResponse {
   authUrl: string;
 }
 
-interface IGetTokenUrlResponse {
+interface IGetTokenResponse {
   id: string;
   app: string;
 }
@@ -16,12 +16,22 @@ class CredentialService {
     return data.data;
   }
 
-  async getTokenUrl(
+  async getConnections(provider: string, stepType: string) {
+    const { data } = await axiosInstance.get(
+      `/credential/${provider}/connections?stepType=${stepType}`,
+    );
+
+    return data.data;
+  }
+
+  async getToken(
     provider: string,
     code: string,
-  ): Promise<IGetTokenUrlResponse> {
+    stepType: string,
+  ): Promise<IGetTokenResponse> {
     const { data } = await axiosInstance.post(`/credential/${provider}/token`, {
       code,
+      stepType,
     });
 
     return data.data;
