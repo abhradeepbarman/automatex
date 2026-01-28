@@ -2,8 +2,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import {
   connectionRelations,
   connections,
-  executionRelations,
-  executions,
+  runRelations,
+  runs,
   stepConditions,
   stepConditionsRelations,
   stepRelations,
@@ -20,14 +20,14 @@ const schema = {
   steps,
   stepConditions,
   connections,
-  executions,
+  runs,
 
   userRelations,
   workflowRelations,
   stepRelations,
   stepConditionsRelations,
   connectionRelations,
-  executionRelations,
+  runRelations,
 };
 
 const db = drizzle(process.env.DATABASE_URL!, {

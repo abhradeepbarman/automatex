@@ -9,9 +9,9 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { connections } from './connections';
-import { executions } from './executions';
 import { stepConditions } from './step-conditions';
 import { workflows } from './workflows';
+import { runs } from './runs';
 
 export const steps = pgTable('steps', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
@@ -45,5 +45,5 @@ export const stepRelations = relations(steps, ({ one, many }) => ({
     fields: [steps.connectionId],
     references: [connections.id],
   }),
-  executions: many(executions),
+  runs: many(runs),
 }));

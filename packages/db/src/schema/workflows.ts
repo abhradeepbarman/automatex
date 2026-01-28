@@ -6,9 +6,9 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
-import { executions } from './executions';
 import { steps } from './steps';
 import { users } from './users';
+import { runs } from './runs';
 
 export const workflows = pgTable('workflows', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
@@ -31,5 +31,5 @@ export const workflowRelations = relations(workflows, ({ one, many }) => ({
     references: [users.id],
   }),
   steps: many(steps),
-  executions: many(executions),
+  runs: many(runs),
 }));

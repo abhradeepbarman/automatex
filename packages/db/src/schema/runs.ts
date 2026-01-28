@@ -4,7 +4,7 @@ import { pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { steps } from './steps';
 import { workflows } from './workflows';
 
-export const runs = pgTable('executions', {
+export const runs = pgTable('runs', {
   id: uuid('id').primaryKey().defaultRandom().notNull(),
   workflowId: uuid('workflow_id')
     .notNull()
