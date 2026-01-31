@@ -10,7 +10,7 @@ class StepService {
     connectionId: string,
     metadata: any,
   ): Promise<{ id: string }> {
-    const { data } = await axiosInstance.post(`/step/${workflowId}`, {
+    const { data } = await axiosInstance.post(`/step/workflow/${workflowId}`, {
       app,
       index,
       type,
@@ -21,26 +21,23 @@ class StepService {
     return data.data;
   }
 
-  async getStep(workflowId: string, stepId: string) {
-    const { data } = await axiosInstance.get(`/step/${workflowId}/${stepId}`);
+  async getStep(stepId: string) {
+    const { data } = await axiosInstance.get(`/step/${stepId}`);
     return data.data;
   }
 
-  async deleteStep(workflowId: string, stepId: string) {
-    const { data } = await axiosInstance.delete(
-      `/step/${workflowId}/${stepId}`,
-    );
+  async deleteStep(stepId: string) {
+    const { data } = await axiosInstance.delete(`/step/${stepId}`);
     return data.data;
   }
 
   async updateStep(
-    workflowId: string,
     stepId: string,
     app?: string,
     connectionId?: string,
     metadata?: any,
   ) {
-    const { data } = await axiosInstance.put(`/step/${workflowId}/${stepId}`, {
+    const { data } = await axiosInstance.put(`/step/${stepId}`, {
       app,
       connectionId,
       metadata,

@@ -4,9 +4,9 @@ import { StepType } from '../types';
 export const addStepSchema = z
   .object({
     app: z.string(),
-    metadata: z.any(),
+    metadata: z.any().optional(),
     index: z.number(),
-    connectionId: z.string(),
+    connectionId: z.string().optional(),
     type: z.enum([StepType.TRIGGER, StepType.ACTION]),
   })
   .refine((data) => !(data.index === 0 && data.type !== StepType.TRIGGER), {

@@ -1,5 +1,3 @@
-import type { Edge, Node } from '@xyflow/react';
-import type { Dispatch, SetStateAction } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,9 +9,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { INITIAL_X, INITIAL_Y, NODE_SPACING } from '@/constants/workflow';
-import { useMutation } from '@tanstack/react-query';
 import stepService from '@/services/step.service';
-import { useParams } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import type { Edge, Node } from '@xyflow/react';
+import type { Dispatch, SetStateAction } from 'react';
 import { toast } from 'sonner';
 
 interface DeleteConfirmationDialogProps {
@@ -41,10 +40,8 @@ const DeleteConfirmationDialog = ({
   setActionSheetOpen,
   setTriggerSheetOpen,
 }: DeleteConfirmationDialogProps) => {
-  const { id } = useParams();
-
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: (stepId: string) => stepService.deleteStep(id!, stepId),
+    mutationFn: (stepId: string) => stepService.deleteStep(stepId),
   });
 
   const confirmDelete = async () => {

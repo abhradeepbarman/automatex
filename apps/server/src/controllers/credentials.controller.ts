@@ -17,7 +17,7 @@ export const getAuthUrl = asyncHandler(
       return next(CustomErrorHandler.badRequest('Invalid provider'));
     }
 
-    const authUrl = appDetails.getAuthUrl();
+    const authUrl = appDetails?.auth?.getAuthUrl();
     if (!authUrl) {
       return next(CustomErrorHandler.badRequest('Invalid provider'));
     }
@@ -52,7 +52,6 @@ export const handleOAuthCallback = asyncHandler(
 export const getConnections = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { provider } = req.params;
-    const { stepType } = req.query;
 
     if (!provider) {
       return next(CustomErrorHandler.badRequest('Provider is required'));
@@ -98,14 +97,18 @@ export const getTokenUrl = asyncHandler(
       return next(CustomErrorHandler.badRequest('Invalid provider'));
     }
 
+    if (!appDetails.auth) {
+      return next(CustomErrorHandler.badRequest('Invalid provider'));
+    }
+
     const { access_token, refresh_token, expires_in } =
-      await appDetails.getToken(code);
+      await appDetails.auth.getToken(code);
 
     if (!access_token) {
       return next(CustomErrorHandler.badRequest());
     }
 
-    const { email, name } = await appDetails.getUserInfo(access_token);
+    const { email, name } = await appDetails.auth.getUserInfo(access_token);
 
     const [credentials] = await db
       .insert(connections)

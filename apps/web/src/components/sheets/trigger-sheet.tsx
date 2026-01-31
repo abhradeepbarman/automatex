@@ -1,16 +1,10 @@
-import { INITIAL_X, INITIAL_Y, NODE_SPACING } from '@/constants/workflow';
-import stepService from '@/services/step.service';
-import { zodResolver } from '@hookform/resolvers/zod';
 import apps from '@repo/common/@apps';
 import { StepType } from '@repo/common/types';
-import { useMutation } from '@tanstack/react-query';
 import type { Edge, Node } from '@xyflow/react';
-import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useParams } from 'react-router-dom';
-import z from 'zod';
-import DynamicForm from '../common/dynamic-form';
-import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
+import ConnectBtn from '../common/connect-btn';
+import { Field, FieldError, FieldLabel } from '../ui/field';
 import {
   Select,
   SelectContent,
@@ -25,8 +19,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from '../ui/sheet';
-import ConnectBtn from '../common/connect-btn';
-import { Button } from '../ui/button';
+import DynamicForm from '../common/dynamic-form';
+import stepService from '@/services/step.service';
+import { useMutation } from '@tanstack/react-query';
+import { INITIAL_X, INITIAL_Y, NODE_SPACING } from '@/constants/workflow';
 
 interface ITriggerSheetProps {
   open: boolean;
@@ -50,19 +46,15 @@ const TriggerSheet = ({
   handleDeleteClick,
 }: ITriggerSheetProps) => {
   const { id: workflowId } = useParams();
-  const triggerSheetSchema = z.object({
-    appId: z.string().min(1, 'Please select an app'),
-    triggerId: z.string().min(1, 'Please select a trigger'),
-    connectionId: z.string().min(1, 'Connection is required'),
+  const [commonFields, setCommonFields] = useState({
+    appId: '',
+    triggerId: '',
+    connectionId: '',
   });
-
-  const form = useForm({
-    resolver: zodResolver(triggerSheetSchema),
-    defaultValues: {
-      appId: '',
-      triggerId: '',
-      connectionId: '',
-    },
+  const [commonFieldsErr, setCommonFieldsErr] = useState({
+    appId: '',
+    triggerId: '',
+    connectionId: '',
   });
 
   const { mutateAsync, isPending } = useMutation({
@@ -70,66 +62,41 @@ const TriggerSheet = ({
     mutationFn: (metadata: Node) =>
       stepService.addStep(
         workflowId!,
-        appId,
+        commonFields.appId,
         0,
         StepType.TRIGGER,
-        connectionId,
+        commonFields.connectionId,
         metadata,
       ),
   });
 
-  const [appId, triggerId] = useWatch({
-    control: form.control,
-    name: ['appId', 'triggerId'],
-  });
-
-  const [connectionId] = useWatch({
-    control: form.control,
-    name: ['connectionId'],
-  });
-
-  const selectedTrigger = useMemo(() => {
-    if (!appId || !triggerId) return null;
-    const app = apps.find((app) => app.id === appId);
-    return app?.triggers.find((trigger) => trigger.id === triggerId);
-  }, [appId, triggerId]);
-
   const onSubmit = async (fieldData: any) => {
-    const formData = form.getValues();
+    const { appId, triggerId, connectionId } = commonFields;
 
-    // validate parent form fields manually
-    if (!appId) {
-      form.setError('appId', {
-        type: 'required',
-        message: 'App is required',
-      });
-      return;
-    }
-
-    if (!triggerId) {
-      form.setError('triggerId', {
-        type: 'required',
-        message: 'Trigger is required',
-      });
-      return;
-    }
-
-    if (!connectionId) {
-      form.setError('connectionId', {
-        type: 'required',
-        message: 'Connection is required',
-      });
-      return;
-    }
+    if (!appId)
+      return setCommonFieldsErr((prev) => ({
+        ...prev,
+        appId: 'App is required',
+      }));
+    if (!triggerId)
+      return setCommonFieldsErr((prev) => ({
+        ...prev,
+        triggerId: 'Trigger is required',
+      }));
+    if (appDetails?.auth && !connectionId)
+      return setCommonFieldsErr((prev) => ({
+        ...prev,
+        connectionId: 'Connection is required',
+      }));
 
     const nodeDetails: Node = {
       id: '',
       type: 'triggerNode',
       position: { x: INITIAL_X, y: INITIAL_Y },
       data: {
-        appId: formData.appId,
-        triggerId: formData.triggerId,
-        connectionId: formData.connectionId,
+        appId: commonFields.appId,
+        triggerId: commonFields.triggerId,
+        connectionId: commonFields.connectionId,
         index: 0,
         fields: fieldData || {},
       },
@@ -137,8 +104,8 @@ const TriggerSheet = ({
 
     const { id } = await mutateAsync(nodeDetails);
 
-    const triggerNodeId = (nodeDetails.id = `trigger-${id}`);
-    const addActionButtonId = `add-action-${triggerNodeId}`;
+    nodeDetails.id = id;
+    const addActionButtonId = `add-action-${id}`;
 
     setNodes((prev) => [
       ...prev.filter((n) => n.type !== 'addTriggerButton'),
@@ -147,7 +114,7 @@ const TriggerSheet = ({
         data: {
           ...nodeDetails.data,
           handleEditClick: () => handleEditClick(),
-          handleDeleteClick: () => handleDeleteClick(triggerNodeId),
+          handleDeleteClick: () => handleDeleteClick(id),
         },
       },
       {
@@ -156,7 +123,7 @@ const TriggerSheet = ({
         position: { x: INITIAL_X + NODE_SPACING, y: INITIAL_Y },
         data: {
           onAddClick: () => {
-            setSelectedSourceNodeId(triggerNodeId);
+            setSelectedSourceNodeId(id);
             setActionSheetOpen(true);
           },
         },
@@ -166,170 +133,173 @@ const TriggerSheet = ({
     setEdges((prev) => [
       ...prev,
       {
-        id: `${triggerNodeId}-${addActionButtonId}`,
-        source: triggerNodeId,
+        id: `${id}-${addActionButtonId}`,
+        source: id,
         target: addActionButtonId,
       },
     ]);
 
     onOpenChange(false);
-    form.reset();
   };
+
+  const appDetails = apps.find((app) => app.id === commonFields.appId);
+  const triggerDetails = useMemo(() => {
+    return appDetails?.triggers?.find(
+      (trigger) => trigger.id === commonFields.triggerId,
+    );
+  }, [commonFields.triggerId, appDetails]);
 
   return (
     <Sheet
       open={open}
       onOpenChange={(isOpen) => {
-        if (!isOpen) form.reset();
         onOpenChange(isOpen);
+        if (!isOpen) {
+          setCommonFields({
+            appId: '',
+            triggerId: '',
+            connectionId: '',
+          });
+          setCommonFieldsErr({
+            appId: '',
+            triggerId: '',
+            connectionId: '',
+          });
+        }
       }}
     >
       <SheetContent className="overflow-y-auto pb-5">
         <SheetHeader>
-          <SheetTitle>Add trigger</SheetTitle>
+          <SheetTitle>Add Trigger</SheetTitle>
           <SheetDescription>
-            Choose a trigger to add to your workflow
+            Configure a trigger to start your workflow automatically
           </SheetDescription>
         </SheetHeader>
 
-        <form className="space-y-6 px-4">
-          <Controller
-            control={form.control}
-            name={'appId'}
-            render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Choose an app</FieldLabel>
-                <Select
-                  name={field.name}
-                  value={field.value}
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    form.setValue('triggerId', '');
-                    form.setValue('connectionId', '');
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an app" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {apps
-                      .filter((app) => app.triggers.length > 0)
-                      .map((app) => (
-                        <SelectItem key={app.id} value={app.id}>
-                          <div className="flex items-center gap-2">
-                            {app.icon && (
-                              <img
-                                src={app.icon}
-                                alt={app.name}
-                                className="h-5 w-5 object-contain"
-                              />
-                            )}
-                            <span>{app.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
-              </Field>
+        <div className="space-y-6 px-4">
+          <Field>
+            <FieldLabel>App</FieldLabel>
+            <Select
+              value={commonFields.appId}
+              onValueChange={(val) => {
+                setCommonFields((prev) => ({
+                  ...prev,
+                  appId: val,
+                  triggerId: '',
+                  connectionId: '',
+                }));
+                setCommonFieldsErr((prev) => ({
+                  ...prev,
+                  appId: '',
+                  triggerId: '',
+                  connectionId: '',
+                }));
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select an app" />
+              </SelectTrigger>
+              <SelectContent>
+                {apps
+                  .filter((app) => app.triggers && app.triggers.length > 0)
+                  .map((app) => (
+                    <SelectItem key={app.id} value={app.id}>
+                      <div className="flex items-center gap-2">
+                        {app.icon && (
+                          <img
+                            src={app.icon}
+                            alt={app.name}
+                            className="h-5 w-5 object-contain"
+                          />
+                        )}
+                        <span>{app.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {commonFieldsErr.appId && (
+              <FieldError errors={[{ message: commonFieldsErr.appId }]} />
             )}
-          />
+          </Field>
 
-          {appId && (
-            <Controller
-              control={form.control}
-              name="triggerId"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>Choose an trigger</FieldLabel>
-                  <Select
-                    name={field.name}
-                    value={field.value}
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      form.setValue('connectionId', '');
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a trigger" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {apps
-                        .find((app) => app.id === appId)
-                        ?.triggers.map((trigger) => (
-                          <SelectItem key={trigger.id} value={trigger.id}>
-                            {trigger.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldState.error && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
+          {commonFields.appId && (
+            <Field>
+              <FieldLabel>Trigger</FieldLabel>
+              <Select
+                value={commonFields.triggerId}
+                onValueChange={(val) => {
+                  setCommonFields((prev) => ({
+                    ...prev,
+                    triggerId: val,
+                  }));
+                  setCommonFieldsErr((prev) => ({
+                    ...prev,
+                    triggerId: '',
+                  }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a trigger" />
+                </SelectTrigger>
+                <SelectContent>
+                  {apps
+                    .find((app) => app.id === commonFields.appId)
+                    ?.triggers?.map((trigger) => (
+                      <SelectItem key={trigger.id} value={trigger.id}>
+                        {trigger.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {commonFieldsErr.triggerId && (
+                <FieldError errors={[{ message: commonFieldsErr.triggerId }]} />
               )}
-            />
+            </Field>
           )}
 
-          {appId && triggerId && (
-            <Controller
-              control={form.control}
-              name="connectionId"
-              render={({ fieldState }) => (
-                <Field>
-                  <FieldLabel>App connection</FieldLabel>
-                  <FieldDescription className="pb-2">
-                    Connect your account to use this trigger
-                  </FieldDescription>
-                  {!connectionId ? (
-                    <ConnectBtn
-                      appId={appId}
-                      stepType={triggerId}
-                      onAuthSuccess={(id: string) => {
-                        form.setValue('connectionId', id);
-                        form.clearErrors('connectionId');
-                      }}
-                    />
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        form.setValue('connectionId', '');
-                      }}
-                    >
-                      Disconnect
-                    </Button>
-                  )}
-                  {fieldState.error && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-          )}
-        </form>
-
-        {/* Configure */}
-        {selectedTrigger &&
-          selectedTrigger.fields.length > 0 &&
-          connectionId && (
-            <div className="mt-6 px-4">
-              <div className="mb-4">
-                <h3 className="text-sm font-medium">Configure trigger</h3>
-                <p className="text-sm text-muted-foreground">
-                  {selectedTrigger.description}
-                </p>
-              </div>
-              <DynamicForm
-                fields={selectedTrigger.fields}
-                onSubmit={onSubmit}
-                submitLabel="Add trigger"
-                isLoading={isPending}
-                connectionId={connectionId}
+          {appDetails?.auth && (
+            <Field>
+              <FieldLabel>Connection</FieldLabel>
+              <ConnectBtn
+                appId={commonFields.appId}
+                stepType={StepType.TRIGGER}
+                selectedConnectionId={commonFields.connectionId}
+                onAuthSuccess={(id) => {
+                  setCommonFields((prev) => ({
+                    ...prev,
+                    connectionId: id,
+                  }));
+                  setCommonFieldsErr((prev) => ({
+                    ...prev,
+                    connectionId: '',
+                  }));
+                }}
               />
+              {commonFieldsErr.connectionId && (
+                <FieldError
+                  errors={[{ message: commonFieldsErr.connectionId }]}
+                />
+              )}
+            </Field>
+          )}
+
+          {appDetails && triggerDetails && (
+            <div className="mt-6 space-y-4">
+              <div className="border-t pt-6">
+                <h3 className="mb-4 text-sm font-medium">
+                  Trigger Configuration
+                </h3>
+                <DynamicForm
+                  fields={triggerDetails.fields}
+                  onSubmit={onSubmit}
+                  submitLabel="Add Trigger"
+                  isLoading={isPending}
+                />
+              </div>
             </div>
           )}
+        </div>
       </SheetContent>
     </Sheet>
   );

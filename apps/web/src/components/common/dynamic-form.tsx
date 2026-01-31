@@ -10,16 +10,14 @@ import {
 } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { type FieldConfig } from '@repo/common/types';
-import { useQuery } from '@tanstack/react-query';
-import proxyService from '@/services/proxy.service';
+import { LoaderCircle } from 'lucide-react';
 import { useMemo } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
-import { LoaderCircle } from 'lucide-react';
+import { Field, FieldError, FieldLabel } from '../ui/field';
 
 interface DynamicFormProps {
-  fields: FieldConfig[];
+  fields: FieldConfig[] | undefined;
   onSubmit: (data: any) => void;
   submitLabel: string;
   isLoading: boolean;
@@ -31,20 +29,11 @@ const DynamicForm = ({
   onSubmit,
   submitLabel,
   isLoading,
-  connectionId,
 }: DynamicFormProps) => {
-  const defaultValues = fields.reduce(
-    (acc, field) => {
-      acc[field.name] = field.defaultValue ?? '';
-      return acc;
-    },
-    {} as Record<string, any>,
-  );
-
   const schema = useMemo(() => {
     const schemaFields: Record<string, z.ZodTypeAny> = {};
 
-    fields.forEach((field) => {
+    fields?.forEach((field) => {
       if (field.validations) {
         schemaFields[field.name] = field.validations();
       }
@@ -53,10 +42,7 @@ const DynamicForm = ({
     return z.object(schemaFields);
   }, [fields]);
 
-  const form = useForm({
-    resolver: zodResolver(schema),
-    defaultValues,
-  });
+  const form = useForm({ resolver: zodResolver(schema) });
 
   const renderField = (field: FieldConfig) => {
     switch (field.type) {
@@ -65,56 +51,36 @@ const DynamicForm = ({
       case 'number':
       case 'date':
         return (
-          <Controller
-            key={field.name}
-            control={form.control}
-            name={field.name}
-            defaultValue={field.defaultValue}
-            render={({ field: formField, fieldState }) => (
-              <Field>
-                <FieldLabel>{field.label}</FieldLabel>
-                <Input
-                  name={formField.name}
-                  value={formField.value}
-                  onChange={formField.onChange}
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  disabled={field.disabled}
-                />
-                {field.description && (
-                  <FieldDescription>{field.description}</FieldDescription>
-                )}
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
-              </Field>
+          <Field key={field.name}>
+            <FieldLabel>{field.label}</FieldLabel>
+            <Input
+              type={field.type}
+              placeholder={field.placeholder}
+              disabled={field.disabled}
+              defaultValue={field.defaultValue}
+              {...form.register(field.name)}
+            />
+            {form.formState.errors[field.name] && (
+              <FieldError errors={[form.formState.errors[field.name] as any]} />
             )}
-          />
+          </Field>
         );
 
       case 'textarea':
         return (
-          <Controller
-            key={field.name}
-            control={form.control}
-            name={field.name}
-            defaultValue={field.defaultValue}
-            render={({ field: formField, fieldState }) => (
-              <Field>
-                <FieldLabel>{field.label}</FieldLabel>
-                <textarea
-                  name={formField.name}
-                  value={formField.value}
-                  onChange={formField.onChange}
-                  placeholder={field.placeholder}
-                  disabled={field.disabled}
-                  className="flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-                />
-                {field.description && (
-                  <FieldDescription>{field.description}</FieldDescription>
-                )}
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
-              </Field>
+          <Field key={field.name}>
+            <FieldLabel>{field.label}</FieldLabel>
+            <textarea
+              className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder={field.placeholder}
+              disabled={field.disabled}
+              defaultValue={field.defaultValue}
+              {...form.register(field.name)}
+            />
+            {form.formState.errors[field.name] && (
+              <FieldError errors={[form.formState.errors[field.name] as any]} />
             )}
-          />
+          </Field>
         );
 
       case 'select':
@@ -123,68 +89,43 @@ const DynamicForm = ({
             key={field.name}
             control={form.control}
             name={field.name}
-            defaultValue={field.defaultValue}
-            render={({ field: formField, fieldState }) => {
-              const { data: dynamicOptions, isLoading: isLoadingOptions } =
-                useQuery({
-                  queryKey: [
-                    'dynamic-options',
-                    field.dynamicOptions?.url,
-                    connectionId,
-                  ],
-                  queryFn: async () => {
-                    if (!field.dynamicOptions || !connectionId) return [];
-                    const data = await proxyService.getDynamicOptions(
-                      field.dynamicOptions.url,
-                      connectionId,
+            defaultValue={field.defaultValue || ''}
+            render={({ field: controllerField, fieldState }) => (
+              <Field>
+                <FieldLabel>{field.label}</FieldLabel>
+                <Select
+                  value={
+                    controllerField.value && controllerField.value !== ''
+                      ? String(controllerField.value)
+                      : undefined
+                  }
+                  onValueChange={(value) => {
+                    const selectedOption = field.options?.find(
+                      (opt) => String(opt.value) === value,
                     );
-                    return data.map((item: any) => ({
-                      label: item[field.dynamicOptions!.labelKey],
-                      value: item[field.dynamicOptions!.valueKey],
-                    }));
-                  },
-                  enabled: !!field.dynamicOptions && !!connectionId,
-                });
-
-              const options = field.dynamicOptions
-                ? dynamicOptions
-                : field.options;
-
-              return (
-                <Field>
-                  <FieldLabel>{field.label}</FieldLabel>
-                  <Select
-                    name={formField.name}
-                    value={formField.value}
-                    onValueChange={formField.onChange}
-                    disabled={field.disabled}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue
-                        placeholder={
-                          isLoadingOptions
-                            ? 'Loading...'
-                            : field.placeholder || 'Select an option'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {options?.map((option: any) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {field.description && (
-                    <FieldDescription>{field.description}</FieldDescription>
-                  )}
-                  {fieldState.error && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              );
-            }}
+                    controllerField.onChange(
+                      selectedOption ? selectedOption.value : value,
+                    );
+                  }}
+                  disabled={field.disabled}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={field.placeholder} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options?.map((option) => (
+                      <SelectItem
+                        key={String(option.value)}
+                        value={String(option.value)}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldState.error && <FieldError errors={[fieldState.error]} />}
+              </Field>
+            )}
           />
         );
 
@@ -194,22 +135,16 @@ const DynamicForm = ({
             key={field.name}
             control={form.control}
             name={field.name}
-            defaultValue={field.defaultValue}
-            render={({ field: formField, fieldState }) => (
+            defaultValue={field.defaultValue || false}
+            render={({ field: controllerField, fieldState }) => (
               <Field>
-                <div className="flex items-start space-x-3 rounded-md border p-4">
+                <div className="flex items-center space-x-2">
                   <Checkbox
-                    name={formField.name}
-                    value={formField.value}
-                    onChange={formField.onChange}
+                    checked={controllerField.value as boolean}
+                    onCheckedChange={controllerField.onChange}
                     disabled={field.disabled}
                   />
-                  <div className="space-y-1">
-                    <FieldLabel>{field.label}</FieldLabel>
-                    {field.description && (
-                      <FieldDescription>{field.description}</FieldDescription>
-                    )}
-                  </div>
+                  <FieldLabel className="mt-0">{field.label}</FieldLabel>
                 </div>
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
@@ -223,9 +158,9 @@ const DynamicForm = ({
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      {fields.map((field) => renderField(field))}
-      <Button className="mt-6 w-full" type="submit" disabled={isLoading}>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      {fields?.map((field) => renderField(field))}
+      <Button className="mt-8 w-full" type="submit" disabled={isLoading}>
         {!isLoading ? submitLabel : <LoaderCircle className="animate-spin" />}
       </Button>
     </form>

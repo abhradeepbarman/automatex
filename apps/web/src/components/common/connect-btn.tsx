@@ -15,10 +15,16 @@ import {
 interface IConnectBtnProps {
   appId: string;
   stepType: string;
+  selectedConnectionId?: string;
   onAuthSuccess?: (id: string) => void;
 }
 
-const ConnectBtn = ({ appId, stepType, onAuthSuccess }: IConnectBtnProps) => {
+const ConnectBtn = ({
+  appId,
+  stepType,
+  selectedConnectionId,
+  onAuthSuccess,
+}: IConnectBtnProps) => {
   const [code, setCode] = useState<string>('');
 
   const { data: connections, refetch: refetchConnections } = useQuery({
@@ -45,6 +51,7 @@ const ConnectBtn = ({ appId, stepType, onAuthSuccess }: IConnectBtnProps) => {
         window.open(data.authUrl, 'Authentication', 'width=500,height=600');
       }
     } catch (error) {
+      console.error(error);
       toast.error('Something went wrong');
     }
   };
@@ -78,48 +85,67 @@ const ConnectBtn = ({ appId, stepType, onAuthSuccess }: IConnectBtnProps) => {
           }
         }
       } catch (error) {
+        console.error(error);
         toast.error('Failed to get access token');
       }
     };
 
     fetchAccessToken();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
+
+  const selectedConnection = connections?.find(
+    (conn: any) => conn.id === selectedConnectionId,
+  );
 
   return (
     <div className="space-y-2">
-      {connections && connections.length > 0 && (
-        <Select onValueChange={(value) => onAuthSuccess?.(value)}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select existing connection" />
-          </SelectTrigger>
-          <SelectContent>
-            {connections.map((connection: any) => (
-              <SelectItem key={connection.id} value={connection.id}>
-                {connection.connectionName ? (
-                  <span className="font-medium">
-                    {connection.connectionName}
-                  </span>
-                ) : (
-                  `Connected on ${new Date(
-                    connection.createdAt,
-                  ).toLocaleDateString()}`
-                )}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      {selectedConnectionId && selectedConnection ? (
+        <div className="space-y-2">
+          <div className="rounded-md border border-green-200 bg-green-50 p-3">
+            <p className="text-sm font-medium text-green-900">
+              {selectedConnection.name}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => onAuthSuccess?.('')}
+          >
+            Change connection
+          </Button>
+        </div>
+      ) : (
+        <>
+          {connections && connections.length > 0 && (
+            <Select
+              value={selectedConnectionId || ''}
+              onValueChange={(value) => onAuthSuccess?.(value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select existing connection" />
+              </SelectTrigger>
+              <SelectContent>
+                {connections.map((connection: any) => (
+                  <SelectItem key={connection.id} value={connection.id}>
+                    {connection.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full gap-2"
-        onClick={handleClick}
-      >
-        <Plus className="h-4 w-4" />
-        Connect new account
-      </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2"
+            onClick={handleClick}
+          >
+            <Plus className="h-4 w-4" />
+            Connect new account
+          </Button>
+        </>
+      )}
     </div>
   );
 };

@@ -5,6 +5,6 @@ export const system: IApp = {
   id: AppType.SYSTEM,
   name: 'Others',
   description: 'system events',
-  icon: '',
+  icon: '/system.png',
   triggers,
 };

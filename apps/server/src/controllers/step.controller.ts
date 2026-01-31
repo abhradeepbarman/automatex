@@ -31,7 +31,7 @@ export const addStep = asyncHandler(
         metadata,
         index: index,
         type,
-        connectionId,
+        connectionId: connectionId || undefined,
       })
       .returning();
 
@@ -90,25 +90,30 @@ export const deleteStep = asyncHandler(
       return next(CustomErrorHandler.notAllowed());
     }
 
-    const [deletedStep] = await db
+    const deletedSteps = await db
       .delete(steps)
       .where(
         and(
-          eq(workflows.id, stepDetails.workflowId),
+          eq(steps.workflowId, stepDetails.workflowId),
           gte(steps.index, stepDetails.index),
         ),
       )
       .returning();
 
-    if (stepDetails.index >= 2) {
-      await db.update(workflows).set({
-        isActive: true,
-      });
+    console.log(deletedSteps);
+
+    if (stepDetails.index <= 1) {
+      await db
+        .update(workflows)
+        .set({
+          isActive: false,
+        })
+        .where(eq(workflows.id, stepDetails.workflowId));
     }
 
     return res
       .status(200)
-      .send(ResponseHandler(200, 'Step deleted successfully', deletedStep));
+      .send(ResponseHandler(200, 'Step deleted successfully', deletedSteps));
   },
 );
 

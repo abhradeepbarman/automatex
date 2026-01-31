@@ -1,18 +1,14 @@
 import stepService from '@/services/step.service';
-import { zodResolver } from '@hookform/resolvers/zod';
 import apps from '@repo/common/@apps';
 import { StepType } from '@repo/common/types';
 import { useMutation } from '@tanstack/react-query';
 import type { Edge, Node } from '@xyflow/react';
-import { useMemo, type Dispatch, type SetStateAction } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useParams } from 'react-router-dom';
-import z from 'zod';
 import { NODE_SPACING } from '@/constants/workflow';
 import ConnectBtn from '../common/connect-btn';
 import DynamicForm from '../common/dynamic-form';
-import { Button } from '../ui/button';
-import { Field, FieldDescription, FieldError, FieldLabel } from '../ui/field';
+import { Field, FieldError, FieldLabel } from '../ui/field';
 import {
   Select,
   SelectContent,
@@ -54,19 +50,15 @@ const ActionSheet = ({
   handleDeleteClick,
 }: IActionSheetProps) => {
   const { id: workflowId } = useParams();
-  const actionSheetSchema = z.object({
-    appId: z.string().min(1, 'Please select an app'),
-    actionId: z.string().min(1, 'Please select an action'),
-    connectionId: z.string().min(1, 'Connection is required'),
+  const [commonFields, setCommonFields] = useState({
+    appId: '',
+    actionId: '',
+    connectionId: '',
   });
-
-  const form = useForm({
-    resolver: zodResolver(actionSheetSchema),
-    defaultValues: {
-      appId: '',
-      actionId: '',
-      connectionId: '',
-    },
+  const [commonFieldsErr, setCommonFieldsErr] = useState({
+    appId: '',
+    actionId: '',
+    connectionId: '',
   });
 
   const { mutateAsync, isPending } = useMutation({
@@ -74,57 +66,38 @@ const ActionSheet = ({
     mutationFn: (metadata: Node) =>
       stepService.addStep(
         workflowId!,
-        appId,
+        commonFields.appId,
         nodes.length,
         StepType.ACTION,
-        connectionId,
+        commonFields.connectionId,
         metadata,
       ),
   });
 
-  const [appId, actionId] = useWatch({
-    control: form.control,
-    name: ['appId', 'actionId'],
-  });
-
-  const [connectionId] = useWatch({
-    control: form.control,
-    name: ['connectionId'],
-  });
-
   const selectedAction = useMemo(() => {
-    if (!appId || !actionId) return null;
-    const app = apps.find((a) => a.id === appId);
-    return app?.actions.find((a) => a.id === actionId);
-  }, [appId, actionId]);
+    if (!commonFields.appId || !commonFields.actionId) return null;
+    const app = apps.find((a) => a.id === commonFields.appId);
+    return app?.actions?.find((a) => a.id === commonFields.actionId);
+  }, [commonFields.appId, commonFields.actionId]);
 
   const onSubmit = async (fieldData: any) => {
-    const formData = form.getValues();
+    const { appId, actionId, connectionId } = commonFields;
 
-    // validate parent form fields manually
-    if (!appId) {
-      form.setError('appId', {
-        type: 'required',
-        message: 'App is required',
-      });
-      return;
-    }
-
-    if (!formData.actionId) {
-      form.setError('actionId', {
-        type: 'required',
-        message: 'Action is required',
-      });
-      return;
-    }
-
-    if (!connectionId) {
-      form.setError('connectionId', {
-        type: 'required',
-        message: 'Connection is required',
-      });
-      return;
-    }
+    if (!appId)
+      return setCommonFieldsErr((prev) => ({
+        ...prev,
+        appId: 'App is required',
+      }));
+    if (!actionId)
+      return setCommonFieldsErr((prev) => ({
+        ...prev,
+        actionId: 'Action is required',
+      }));
+    if (!connectionId)
+      return setCommonFieldsErr((prev) => ({
+        ...prev,
+        connectionId: 'Connection is required',
+      }));
 
     // Find the source node to calculate position
     const sourceNode = nodes.find((n) => n.id === sourceNodeId);
@@ -142,17 +115,16 @@ const ActionSheet = ({
       },
       data: {
         index: nodes.length,
-        appId: formData.appId,
-        actionId: formData.actionId,
+        appId: commonFields.appId,
+        actionId: commonFields.actionId,
         fields: fieldData || {},
       },
     };
 
     const { id } = await mutateAsync(nodeDetails);
 
-    const actionNodeId = `action-${id}`;
-    nodeDetails.id = actionNodeId;
-    const addActionButtonId = `add-action-${actionNodeId}`;
+    nodeDetails.id = id;
+    const addActionButtonId = `add-action-${id}`;
 
     setNodes((prev) => {
       const oldButtonId = `add-action-${sourceNodeId}`;
@@ -165,7 +137,7 @@ const ActionSheet = ({
           data: {
             ...nodeDetails.data,
             handleEditClick: () => handleEditClick(),
-            handleDeleteClick: () => handleDeleteClick(actionNodeId),
+            handleDeleteClick: () => handleDeleteClick(id),
           },
         },
         {
@@ -177,7 +149,7 @@ const ActionSheet = ({
           },
           data: {
             onAddClick: () => {
-              setSelectedSourceNodeId(actionNodeId);
+              setSelectedSourceNodeId(id);
               setActionSheetOpen(true);
             },
           },
@@ -192,176 +164,174 @@ const ActionSheet = ({
       return [
         ...filtered,
         {
-          id: `${sourceNodeId}-${actionNodeId}`,
+          id: `${sourceNodeId}-${id}`,
           source: sourceNodeId,
-          target: actionNodeId,
+          target: id,
         },
         {
-          id: `${actionNodeId}-${addActionButtonId}`,
-          source: actionNodeId,
+          id: `${id}-${addActionButtonId}`,
+          source: id,
           target: addActionButtonId,
         },
       ];
     });
 
     onOpenChange(false);
-    form.reset();
   };
 
   return (
     <Sheet
       open={open}
       onOpenChange={(isOpen) => {
-        if (!isOpen) form.reset();
         onOpenChange(isOpen);
+        if (!isOpen) {
+          setCommonFields({
+            appId: '',
+            actionId: '',
+            connectionId: '',
+          });
+          setCommonFieldsErr({
+            appId: '',
+            actionId: '',
+            connectionId: '',
+          });
+        }
       }}
     >
       <SheetContent className="overflow-y-auto pb-5">
         <SheetHeader>
-          <SheetTitle>Add action</SheetTitle>
+          <SheetTitle>Add Action</SheetTitle>
           <SheetDescription>
             Choose an action to add to your workflow
           </SheetDescription>
         </SheetHeader>
 
-        <form className="space-y-6 px-4">
-          <Controller
-            control={form.control}
-            name={'appId'}
-            render={({ field, fieldState }) => (
-              <Field>
-                <FieldLabel>Choose an app</FieldLabel>
-                <Select
-                  name={field.name}
-                  value={field.value}
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    form.setValue('actionId', '');
-                    form.setValue('connectionId', '');
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an app" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {apps
-                      .filter((app) => app.actions.length > 0)
-                      .map((app) => (
-                        <SelectItem key={app.id} value={app.id}>
-                          <div className="flex items-center gap-2">
-                            {app.icon && (
-                              <img
-                                src={app.icon}
-                                alt={app.name}
-                                className="h-5 w-5 object-contain"
-                              />
-                            )}
-                            <span>{app.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {fieldState.error && <FieldError errors={[fieldState.error]} />}
-              </Field>
+        <div className="space-y-6 px-4">
+          <Field>
+            <FieldLabel>App</FieldLabel>
+            <Select
+              value={commonFields.appId}
+              onValueChange={(val) => {
+                setCommonFields((prev) => ({
+                  ...prev,
+                  appId: val,
+                  actionId: '',
+                  connectionId: '',
+                }));
+                setCommonFieldsErr((prev) => ({
+                  ...prev,
+                  appId: '',
+                  actionId: '',
+                  connectionId: '',
+                }));
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select an app" />
+              </SelectTrigger>
+              <SelectContent>
+                {apps
+                  .filter((app) => app.actions && app.actions.length > 0)
+                  .map((app) => (
+                    <SelectItem key={app.id} value={app.id}>
+                      <div className="flex items-center gap-2">
+                        {app.icon && (
+                          <img
+                            src={app.icon}
+                            alt={app.name}
+                            className="h-5 w-5 object-contain"
+                          />
+                        )}
+                        <span>{app.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {commonFieldsErr.appId && (
+              <FieldError errors={[{ message: commonFieldsErr.appId }]} />
             )}
-          />
+          </Field>
 
-          {appId && (
-            <Controller
-              control={form.control}
-              name="actionId"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel>Choose an action</FieldLabel>
-                  <Select
-                    name={field.name}
-                    value={field.value}
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      form.setValue('connectionId', '');
-                    }}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select an action" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {apps
-                        .find((app) => app.id === appId)
-                        ?.actions.map((action) => (
-                          <SelectItem key={action.id} value={action.id}>
-                            {action.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldState.error && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
+          {commonFields.appId && (
+            <Field>
+              <FieldLabel>Action</FieldLabel>
+              <Select
+                value={commonFields.actionId}
+                onValueChange={(val) => {
+                  setCommonFields((prev) => ({
+                    ...prev,
+                    actionId: val,
+                  }));
+                  setCommonFieldsErr((prev) => ({
+                    ...prev,
+                    actionId: '',
+                  }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an action" />
+                </SelectTrigger>
+                <SelectContent>
+                  {apps
+                    .find((app) => app.id === commonFields.appId)
+                    ?.actions?.map((action) => (
+                      <SelectItem key={action.id} value={action.id}>
+                        {action.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {commonFieldsErr.actionId && (
+                <FieldError errors={[{ message: commonFieldsErr.actionId }]} />
               )}
-            />
+            </Field>
           )}
-        </form>
 
-        {appId && actionId && (
-          <div className="px-4 pb-6">
-            <Controller
-              control={form.control}
-              name="connectionId"
-              render={({ fieldState }) => (
-                <Field>
-                  <FieldLabel>App connection</FieldLabel>
-                  <FieldDescription className="pb-2">
-                    Connect your account to use this action
-                  </FieldDescription>
-                  {!connectionId ? (
-                    <ConnectBtn
-                      appId={appId}
-                      stepType={actionId}
-                      onAuthSuccess={(id: string) => {
-                        form.setValue('connectionId', id);
-                        form.clearErrors('connectionId');
-                      }}
-                    />
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        form.setValue('connectionId', '');
-                      }}
-                    >
-                      Disconnect
-                    </Button>
-                  )}
-                  {fieldState.error && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
+          {commonFields.appId && commonFields.actionId && (
+            <Field>
+              <FieldLabel>Connection</FieldLabel>
+              <ConnectBtn
+                appId={commonFields.appId}
+                stepType={StepType.ACTION}
+                selectedConnectionId={commonFields.connectionId}
+                onAuthSuccess={(id) => {
+                  setCommonFields((prev) => ({
+                    ...prev,
+                    connectionId: id,
+                  }));
+                  setCommonFieldsErr((prev) => ({
+                    ...prev,
+                    connectionId: '',
+                  }));
+                }}
+              />
+              {commonFieldsErr.connectionId && (
+                <FieldError
+                  errors={[{ message: commonFieldsErr.connectionId }]}
+                />
               )}
-            />
-          </div>
-        )}
+            </Field>
+          )}
 
-        {/* Configure */}
-        {selectedAction && selectedAction.fields.length > 0 && connectionId && (
-          <div className="mt-6 px-4">
-            <div className="mb-4">
-              <h3 className="text-sm font-medium">Configure action</h3>
-              <p className="text-sm text-muted-foreground">
-                {selectedAction.description}
-              </p>
-            </div>
-            <DynamicForm
-              fields={selectedAction.fields}
-              onSubmit={onSubmit}
-              submitLabel="Add action"
-              isLoading={isPending}
-              connectionId={connectionId}
-            />
-          </div>
-        )}
+          {selectedAction &&
+            selectedAction.fields &&
+            selectedAction.fields.length > 0 && (
+              <div className="mt-6 space-y-4">
+                <div className="border-t pt-6">
+                  <h3 className="mb-4 text-sm font-medium">
+                    Action Configuration
+                  </h3>
+                  <DynamicForm
+                    fields={selectedAction.fields}
+                    onSubmit={onSubmit}
+                    submitLabel="Add Action"
+                    isLoading={isPending}
+                  />
+                </div>
+              </div>
+            )}
+        </div>
       </SheetContent>
     </Sheet>
   );
