@@ -25,7 +25,7 @@ const TriggerNode = ({ data }: NodeProps<ITriggerNodeData>) => {
   const appDetails = apps.filter((app) => app.id === data.appId)[0];
   const triggerDetails = apps
     .filter((app) => app.id === data.appId)[0]
-    ?.triggers.filter((trigger) => trigger.id === data.triggerId)[0];
+    ?.triggers?.filter((trigger) => trigger.id === data.triggerId)[0];
 
   return (
     <div className="relative min-w-65 rounded-md border bg-card shadow-sm">
@@ -36,7 +36,7 @@ const TriggerNode = ({ data }: NodeProps<ITriggerNodeData>) => {
             <img
               src={appDetails.icon}
               alt={appDetails.name}
-              className="h-6 w-6 object-contain flex-shrink-0 mr-3"
+              className="h-6 w-6 object-contain shrink-0 mr-3"
             />
           )}
           <div className="flex-1">

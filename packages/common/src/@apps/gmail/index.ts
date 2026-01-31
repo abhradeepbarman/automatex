@@ -1,5 +1,6 @@
 import { AppType, IApp } from '../../types';
 import triggers from './triggers';
+import actions from './actions';
 import auth from './auth';
 
 export const gmail: IApp = {
@@ -9,4 +10,5 @@ export const gmail: IApp = {
   icon: '/gmail.png',
   auth,
   triggers,
+  actions,
 };

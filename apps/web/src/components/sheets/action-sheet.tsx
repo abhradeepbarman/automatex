@@ -6,8 +6,10 @@ import type { Edge, Node } from '@xyflow/react';
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useParams } from 'react-router-dom';
 import { NODE_SPACING } from '@/constants/workflow';
+import { toast } from 'sonner';
 import ConnectBtn from '../common/connect-btn';
 import DynamicForm from '../common/dynamic-form';
+import { Button } from '../ui/button';
 import { Field, FieldError, FieldLabel } from '../ui/field';
 import {
   Select,
@@ -63,15 +65,19 @@ const ActionSheet = ({
 
   const { mutateAsync, isPending } = useMutation({
     mutationKey: ['create-action'],
-    mutationFn: (metadata: Node) =>
-      stepService.addStep(
+    mutationFn: (metadata: Node) => {
+      const stepNodes = nodes.filter(
+        (n) => n.type === 'triggerNode' || n.type === 'actionNode',
+      );
+      return stepService.addStep(
         workflowId!,
         commonFields.appId,
-        nodes.length,
+        stepNodes.length,
         StepType.ACTION,
         commonFields.connectionId,
         metadata,
-      ),
+      );
+    },
   });
 
   const selectedAction = useMemo(() => {
@@ -102,9 +108,16 @@ const ActionSheet = ({
     // Find the source node to calculate position
     const sourceNode = nodes.find((n) => n.id === sourceNodeId);
     if (!sourceNode) {
-      console.error('Source node not found');
+      toast.error('Error adding action', {
+        description: 'Source node not found. Please try again.',
+      });
       return;
     }
+
+    // Calculate the correct index by counting only actual step nodes
+    const stepNodes = nodes.filter(
+      (n) => n.type === 'triggerNode' || n.type === 'actionNode',
+    );
 
     const nodeDetails: Node = {
       id: '',
@@ -114,69 +127,83 @@ const ActionSheet = ({
         y: sourceNode.position.y,
       },
       data: {
-        index: nodes.length,
+        index: stepNodes.length,
         appId: commonFields.appId,
         actionId: commonFields.actionId,
         fields: fieldData || {},
       },
     };
 
-    const { id } = await mutateAsync(nodeDetails);
+    try {
+      const { id } = await mutateAsync(nodeDetails);
 
-    nodeDetails.id = id;
-    const addActionButtonId = `add-action-${id}`;
+      nodeDetails.id = id;
+      const addActionButtonId = `add-action-${id}`;
 
-    setNodes((prev) => {
-      const oldButtonId = `add-action-${sourceNodeId}`;
-      const filtered = prev.filter((n) => n.id !== oldButtonId);
+      setNodes((prev) => {
+        const oldButtonId = `add-action-${sourceNodeId}`;
+        const filtered = prev.filter((n) => n.id !== oldButtonId);
 
-      return [
-        ...filtered,
-        {
-          ...nodeDetails,
-          data: {
-            ...nodeDetails.data,
-            handleEditClick: () => handleEditClick(),
-            handleDeleteClick: () => handleDeleteClick(id),
-          },
-        },
-        {
-          id: addActionButtonId,
-          type: 'addActionButton',
-          position: {
-            x: nodeDetails.position.x + NODE_SPACING,
-            y: nodeDetails.position.y,
-          },
-          data: {
-            onAddClick: () => {
-              setSelectedSourceNodeId(id);
-              setActionSheetOpen(true);
+        return [
+          ...filtered,
+          {
+            ...nodeDetails,
+            data: {
+              ...nodeDetails.data,
+              handleEditClick: () => handleEditClick(),
+              handleDeleteClick: () => handleDeleteClick(id),
             },
           },
-        },
-      ];
-    });
+          {
+            id: addActionButtonId,
+            type: 'addActionButton',
+            position: {
+              x: nodeDetails.position.x + NODE_SPACING,
+              y: nodeDetails.position.y,
+            },
+            data: {
+              onAddClick: () => {
+                setSelectedSourceNodeId(id);
+                setActionSheetOpen(true);
+              },
+            },
+          },
+        ];
+      });
 
-    setEdges((prev) => {
-      const oldButtonId = `add-action-${sourceNodeId}`;
-      const filtered = prev.filter((e) => e.target !== oldButtonId);
+      setEdges((prev) => {
+        const oldButtonId = `add-action-${sourceNodeId}`;
+        const filtered = prev.filter((e) => e.target !== oldButtonId);
 
-      return [
-        ...filtered,
-        {
-          id: `${sourceNodeId}-${id}`,
-          source: sourceNodeId,
-          target: id,
-        },
-        {
-          id: `${id}-${addActionButtonId}`,
-          source: id,
-          target: addActionButtonId,
-        },
-      ];
-    });
+        return [
+          ...filtered,
+          {
+            id: `${sourceNodeId}-${id}`,
+            source: sourceNodeId,
+            target: id,
+          },
+          {
+            id: `${id}-${addActionButtonId}`,
+            source: id,
+            target: addActionButtonId,
+          },
+        ];
+      });
 
-    onOpenChange(false);
+      toast.success('Action added successfully', {
+        description: 'The action has been added to your workflow.',
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Failed to add action:', error);
+      toast.error('Failed to add action', {
+        description:
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred. Please try again.',
+      });
+    }
   };
 
   return (
@@ -314,23 +341,33 @@ const ActionSheet = ({
             </Field>
           )}
 
-          {selectedAction &&
-            selectedAction.fields &&
-            selectedAction.fields.length > 0 && (
-              <div className="mt-6 space-y-4">
-                <div className="border-t pt-6">
-                  <h3 className="mb-4 text-sm font-medium">
-                    Action Configuration
-                  </h3>
-                  <DynamicForm
-                    fields={selectedAction.fields}
-                    onSubmit={onSubmit}
-                    submitLabel="Add Action"
-                    isLoading={isPending}
-                  />
-                </div>
+          {selectedAction && (
+            <div className="mt-6 space-y-4">
+              <div className="border-t pt-6">
+                {selectedAction.fields && selectedAction.fields.length > 0 ? (
+                  <>
+                    <h3 className="mb-4 text-sm font-medium">
+                      Action Configuration
+                    </h3>
+                    <DynamicForm
+                      fields={selectedAction.fields}
+                      onSubmit={onSubmit}
+                      submitLabel="Add Action"
+                      isLoading={isPending}
+                    />
+                  </>
+                ) : (
+                  <Button
+                    onClick={() => onSubmit({})}
+                    disabled={isPending}
+                    className="w-full"
+                  >
+                    {isPending ? 'Adding...' : 'Add Action'}
+                  </Button>
+                )}
               </div>
-            )}
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>

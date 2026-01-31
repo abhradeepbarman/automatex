@@ -4,6 +4,7 @@ import type { Edge, Node } from '@xyflow/react';
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useParams } from 'react-router-dom';
 import ConnectBtn from '../common/connect-btn';
+import { Button } from '../ui/button';
 import { Field, FieldError, FieldLabel } from '../ui/field';
 import {
   Select,
@@ -23,6 +24,7 @@ import DynamicForm from '../common/dynamic-form';
 import stepService from '@/services/step.service';
 import { useMutation } from '@tanstack/react-query';
 import { INITIAL_X, INITIAL_Y, NODE_SPACING } from '@/constants/workflow';
+import { toast } from 'sonner';
 
 interface ITriggerSheetProps {
   open: boolean;
@@ -102,44 +104,58 @@ const TriggerSheet = ({
       },
     };
 
-    const { id } = await mutateAsync(nodeDetails);
+    try {
+      const { id } = await mutateAsync(nodeDetails);
 
-    nodeDetails.id = id;
-    const addActionButtonId = `add-action-${id}`;
+      nodeDetails.id = id;
+      const addActionButtonId = `add-action-${id}`;
 
-    setNodes((prev) => [
-      ...prev.filter((n) => n.type !== 'addTriggerButton'),
-      {
-        ...nodeDetails,
-        data: {
-          ...nodeDetails.data,
-          handleEditClick: () => handleEditClick(),
-          handleDeleteClick: () => handleDeleteClick(id),
-        },
-      },
-      {
-        id: addActionButtonId,
-        type: 'addActionButton',
-        position: { x: INITIAL_X + NODE_SPACING, y: INITIAL_Y },
-        data: {
-          onAddClick: () => {
-            setSelectedSourceNodeId(id);
-            setActionSheetOpen(true);
+      setNodes((prev) => [
+        ...prev.filter((n) => n.type !== 'addTriggerButton'),
+        {
+          ...nodeDetails,
+          data: {
+            ...nodeDetails.data,
+            handleEditClick: () => handleEditClick(),
+            handleDeleteClick: () => handleDeleteClick(id),
           },
         },
-      },
-    ]);
+        {
+          id: addActionButtonId,
+          type: 'addActionButton',
+          position: { x: INITIAL_X + NODE_SPACING, y: INITIAL_Y },
+          data: {
+            onAddClick: () => {
+              setSelectedSourceNodeId(id);
+              setActionSheetOpen(true);
+            },
+          },
+        },
+      ]);
 
-    setEdges((prev) => [
-      ...prev,
-      {
-        id: `${id}-${addActionButtonId}`,
-        source: id,
-        target: addActionButtonId,
-      },
-    ]);
+      setEdges((prev) => [
+        ...prev,
+        {
+          id: `${id}-${addActionButtonId}`,
+          source: id,
+          target: addActionButtonId,
+        },
+      ]);
 
-    onOpenChange(false);
+      toast.success('Trigger added successfully', {
+        description: 'The trigger has been added to your workflow.',
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Failed to add trigger:', error);
+      toast.error('Failed to add trigger', {
+        description:
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred. Please try again.',
+      });
+    }
   };
 
   const appDetails = apps.find((app) => app.id === commonFields.appId);
@@ -287,15 +303,27 @@ const TriggerSheet = ({
           {appDetails && triggerDetails && (
             <div className="mt-6 space-y-4">
               <div className="border-t pt-6">
-                <h3 className="mb-4 text-sm font-medium">
-                  Trigger Configuration
-                </h3>
-                <DynamicForm
-                  fields={triggerDetails.fields}
-                  onSubmit={onSubmit}
-                  submitLabel="Add Trigger"
-                  isLoading={isPending}
-                />
+                {triggerDetails.fields && triggerDetails.fields.length > 0 ? (
+                  <>
+                    <h3 className="mb-4 text-sm font-medium">
+                      Trigger Configuration
+                    </h3>
+                    <DynamicForm
+                      fields={triggerDetails.fields}
+                      onSubmit={onSubmit}
+                      submitLabel="Add Trigger"
+                      isLoading={isPending}
+                    />
+                  </>
+                ) : (
+                  <Button
+                    onClick={() => onSubmit({})}
+                    disabled={isPending}
+                    className="w-full"
+                  >
+                    {isPending ? 'Adding...' : 'Add Trigger'}
+                  </Button>
+                )}
               </div>
             </div>
           )}

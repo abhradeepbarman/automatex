@@ -10,9 +10,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { INITIAL_X, INITIAL_Y, NODE_SPACING } from '@/constants/workflow';
 import stepService from '@/services/step.service';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Edge, Node } from '@xyflow/react';
 import type { Dispatch, SetStateAction } from 'react';
+import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface DeleteConfirmationDialogProps {
@@ -40,8 +41,15 @@ const DeleteConfirmationDialog = ({
   setActionSheetOpen,
   setTriggerSheetOpen,
 }: DeleteConfirmationDialogProps) => {
+  const queryClient = useQueryClient();
+  const { id: workflowId } = useParams();
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (stepId: string) => stepService.deleteStep(stepId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['workflow', workflowId],
+      });
+    },
   });
 
   const confirmDelete = async () => {
@@ -57,8 +65,11 @@ const DeleteConfirmationDialog = ({
         return;
       }
 
-      // Find the index of the node to delete
-      const nodeIndex = nodes.findIndex((n) => n.id === nodeIdToDelete);
+      const stepNodes = nodes.filter(
+        (n) => n.type === 'triggerNode' || n.type === 'actionNode',
+      );
+
+      const nodeIndex = stepNodes.findIndex((n) => n.id === nodeIdToDelete);
       if (nodeIndex === -1) {
         toast.error('Node not found', {
           description: 'The node could not be found in the workflow.',
@@ -66,16 +77,14 @@ const DeleteConfirmationDialog = ({
         return;
       }
 
-      // Remove the node and all nodes after it
-      const nodesToKeep = nodes.slice(0, nodeIndex);
+      const stepNodesToKeep = stepNodes.slice(0, nodeIndex);
+      const nodesToKeep = [...stepNodesToKeep];
 
-      // Filter edges to only keep those connected to remaining nodes
       const remainingNodeIds = new Set(nodesToKeep.map((n) => n.id));
       const edgesToKeep = edges.filter(
         (e) => remainingNodeIds.has(e.source) && remainingNodeIds.has(e.target),
       );
 
-      // Add the "add action" button after the last remaining node
       if (nodesToKeep.length > 0) {
         const lastNode = nodesToKeep[nodesToKeep.length - 1];
         const addActionButtonId = `add-action-${lastNode.id}`;
@@ -101,7 +110,6 @@ const DeleteConfirmationDialog = ({
           target: addActionButtonId,
         });
       } else {
-        // If no nodes left, add the initial trigger button
         nodesToKeep.push({
           id: 'add-trigger-initial',
           type: 'addTriggerButton',
@@ -112,11 +120,9 @@ const DeleteConfirmationDialog = ({
         });
       }
 
-      // Update UI only after successful backend deletion
       setNodes(nodesToKeep);
       setEdges(edgesToKeep);
 
-      // Show success message
       toast.success('Node deleted successfully', {
         description: 'The node and all subsequent nodes have been removed.',
       });

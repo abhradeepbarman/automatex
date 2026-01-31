@@ -12,9 +12,9 @@ export const newEmail: ITrigger = {
       name: 'intervalMs',
       type: 'select',
       options: [
-        { label: '1 min', value: 60000 },
-        { label: '5 min', value: 300000 },
-        { label: '10 min', value: 600000 },
+        { label: '1 min', value: '60000' },
+        { label: '5 min', value: '300000' },
+        { label: '10 min', value: '600000' },
       ],
       validations: () => z.number().nonnegative('Interval is required'),
     },

@@ -35,7 +35,7 @@ export type FieldConfig = {
   description?: string;
   disabled?: boolean;
   required?: boolean;
-  options?: { label: string; value: any }[];
+  options?: { label: string; value: string }[];
   dynamicOptions?: {
     url: string;
     labelKey: string;

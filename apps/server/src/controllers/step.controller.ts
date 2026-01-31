@@ -100,8 +100,6 @@ export const deleteStep = asyncHandler(
       )
       .returning();
 
-    console.log(deletedSteps);
-
     if (stepDetails.index <= 1) {
       await db
         .update(workflows)

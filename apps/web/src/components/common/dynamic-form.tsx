@@ -34,15 +34,22 @@ const DynamicForm = ({
     const schemaFields: Record<string, z.ZodTypeAny> = {};
 
     fields?.forEach((field) => {
-      if (field.validations) {
-        schemaFields[field.name] = field.validations();
-      }
+      schemaFields[field.name] = field.validations?.() ?? z.any();
     });
 
     return z.object(schemaFields);
   }, [fields]);
 
-  const form = useForm({ resolver: zodResolver(schema) });
+  const form = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: useMemo(() => {
+      const values: Record<string, any> = {};
+      fields?.forEach((f) => {
+        values[f.name] = f.defaultValue;
+      });
+      return values;
+    }, [fields]),
+  });
 
   const renderField = (field: FieldConfig) => {
     switch (field.type) {
@@ -57,7 +64,6 @@ const DynamicForm = ({
               type={field.type}
               placeholder={field.placeholder}
               disabled={field.disabled}
-              defaultValue={field.defaultValue}
               {...form.register(field.name)}
             />
             {form.formState.errors[field.name] && (
@@ -71,11 +77,10 @@ const DynamicForm = ({
           <Field key={field.name}>
             <FieldLabel>{field.label}</FieldLabel>
             <textarea
-              className="flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              {...form.register(field.name)}
               placeholder={field.placeholder}
               disabled={field.disabled}
-              defaultValue={field.defaultValue}
-              {...form.register(field.name)}
+              className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
             {form.formState.errors[field.name] && (
               <FieldError errors={[form.formState.errors[field.name] as any]} />
@@ -89,40 +94,28 @@ const DynamicForm = ({
             key={field.name}
             control={form.control}
             name={field.name}
-            defaultValue={field.defaultValue || ''}
             render={({ field: controllerField, fieldState }) => (
               <Field>
                 <FieldLabel>{field.label}</FieldLabel>
+
                 <Select
-                  value={
-                    controllerField.value && controllerField.value !== ''
-                      ? String(controllerField.value)
-                      : undefined
-                  }
-                  onValueChange={(value) => {
-                    const selectedOption = field.options?.find(
-                      (opt) => String(opt.value) === value,
-                    );
-                    controllerField.onChange(
-                      selectedOption ? selectedOption.value : value,
-                    );
-                  }}
+                  value={controllerField.value ?? ''}
+                  onValueChange={controllerField.onChange}
                   disabled={field.disabled}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={field.placeholder} />
                   </SelectTrigger>
+
                   <SelectContent>
                     {field.options?.map((option) => (
-                      <SelectItem
-                        key={String(option.value)}
-                        value={String(option.value)}
-                      >
+                      <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+
                 {fieldState.error && <FieldError errors={[fieldState.error]} />}
               </Field>
             )}
@@ -135,13 +128,14 @@ const DynamicForm = ({
             key={field.name}
             control={form.control}
             name={field.name}
-            defaultValue={field.defaultValue || false}
             render={({ field: controllerField, fieldState }) => (
               <Field>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={controllerField.value as boolean}
-                    onCheckedChange={controllerField.onChange}
+                    onCheckedChange={(value) =>
+                      controllerField.onChange(value === true)
+                    }
                     disabled={field.disabled}
                   />
                   <FieldLabel className="mt-0">{field.label}</FieldLabel>

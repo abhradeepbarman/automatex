@@ -25,7 +25,7 @@ const ActionNode = ({ data }: NodeProps<IActionNodeData>) => {
   const appDetails = apps.filter((app) => app.id === data.appId)[0];
   const actionDetails = apps
     .filter((app) => app.id === data.appId)[0]
-    ?.actions.filter((action) => action.id === data.actionId)[0];
+    ?.actions?.filter((action) => action.id === data.actionId)[0];
 
   return (
     <div className="relative min-w-65 rounded-md border bg-card shadow-sm">
@@ -36,7 +36,7 @@ const ActionNode = ({ data }: NodeProps<IActionNodeData>) => {
             <img
               src={appDetails.icon}
               alt={appDetails.name}
-              className="h-6 w-6 object-contain flex-shrink-0 mr-3"
+              className="h-6 w-6 object-contain shrink-0 mr-3"
             />
           )}
           <div className="flex-1">

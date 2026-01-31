@@ -19,7 +19,9 @@ export default function Navbar() {
     onError: (error: any) => {
       console.error('Logout failed:', error);
       toast.error('Logout failed', {
-        description: error?.response?.data?.message || 'Something went wrong. Please try again.',
+        description:
+          error?.response?.data?.message ||
+          'Something went wrong. Please try again.',
       });
     },
   });
@@ -29,7 +31,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="mx-auto max-w-6xl">
         <div className="flex h-16 items-center justify-between">
           {/* Logo/Brand */}
@@ -47,7 +49,7 @@ export default function Navbar() {
                 <span className="text-muted-foreground">{user.name}</span>
               </div>
             )}
-            
+
             <Button
               variant="outline"
               size="sm"
