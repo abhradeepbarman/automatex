@@ -9,7 +9,6 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { connections } from './connections';
-import { stepConditions } from './step-conditions';
 import { workflows } from './workflows';
 import { runs } from './runs';
 
@@ -27,7 +26,10 @@ export const steps = pgTable('steps', {
   index: integer('index').notNull(),
   app: varchar('app').notNull(),
   metadata: jsonb('metadata'),
-  connectionId: uuid('connection_id').references(() => connections.id),
+  connectionId: uuid('connection_id').references(() => connections.id, {
+    onDelete: 'cascade',
+    onUpdate: 'no action',
+  }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -36,10 +38,6 @@ export const stepRelations = relations(steps, ({ one, many }) => ({
   workflows: one(workflows, {
     fields: [steps.workflowId],
     references: [workflows.id],
-  }),
-  stepConditions: one(stepConditions, {
-    fields: [steps.id],
-    references: [stepConditions.stepId],
   }),
   connections: one(connections, {
     fields: [steps.connectionId],

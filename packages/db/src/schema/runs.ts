@@ -18,15 +18,15 @@ export const runs = pgTable('runs', {
       onDelete: 'cascade',
       onUpdate: 'no action',
     }),
-  result: varchar('result', {
-    enum: [ExecutionResult.SUCCESS, ExecutionResult.FAILURE],
-  }),
   status: varchar('status', {
     enum: [
       ExecutionStatus.RUNNING,
       ExecutionStatus.COMPLETED,
       ExecutionStatus.PENDING,
     ],
+  }),
+  result: varchar('result', {
+    enum: [ExecutionResult.SUCCESS, ExecutionResult.FAILURE],
   }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
