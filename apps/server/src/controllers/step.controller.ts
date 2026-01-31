@@ -1,16 +1,27 @@
-import { ConditionOperator, StepType } from '@repo/common/types';
 import { addStepSchema, updateStepSchema } from '@repo/common/validators';
+import db from '@repo/db';
+import { steps, workflows } from '@repo/db/schema';
 import { and, eq, gte } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
-import db from '@repo/db';
-import { stepConditions, steps, workflows } from '@repo/db/schema';
 import { asyncHandler, CustomErrorHandler, ResponseHandler } from '../utils';
 
 export const addStep = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { workflowId } = req.params;
+    const { id: workflowId } = req.params;
     const body = addStepSchema.parse(req.body);
     const { app, metadata, index, type, connectionId } = body;
+
+    const workflowDetails = await db.query.workflows.findFirst({
+      where: and(eq(workflows.id, workflowId as string)),
+    });
+
+    if (!workflowDetails) {
+      return next(CustomErrorHandler.notFound('Workflow not found'));
+    }
+
+    if (workflowDetails.userId !== req.user.id) {
+      return next(CustomErrorHandler.notAllowed());
+    }
 
     const [newStep] = await db
       .insert(steps)
@@ -28,33 +39,30 @@ export const addStep = asyncHandler(
       return next(CustomErrorHandler.serverError());
     }
 
-    if (type == StepType.TRIGGER) {
-      const { field, operator, value } = metadata.data.fields;
-      await db.insert(stepConditions).values({
-        stepId: newStep.id,
-        field,
-        operator,
-        value: value as ConditionOperator,
-      });
-    }
-
-    return res.status(201).send(ResponseHandler(201, 'Step added', newStep));
+    return res
+      .status(201)
+      .send(ResponseHandler(201, 'Step added successfully', newStep));
   },
 );
 
 export const getStep = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { workflowId, stepId } = req.params;
+    const { id: stepId } = req.params;
+    const { id: userId } = req.user;
 
     const stepDetails = await db.query.steps.findFirst({
-      where: eq(steps.workflowId, workflowId as string),
+      where: and(eq(steps.id, stepId as string)),
       with: {
-        stepConditions: true,
+        workflows: true,
       },
     });
 
     if (!stepDetails) {
       return next(CustomErrorHandler.notFound('Step not found'));
+    }
+
+    if (stepDetails.workflows.userId != userId) {
+      return next(CustomErrorHandler.notAllowed());
     }
 
     return res
@@ -65,64 +73,63 @@ export const getStep = asyncHandler(
 
 export const deleteStep = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { workflowId, stepId } = req.params;
+    const { id: stepId } = req.params;
 
     const stepDetails = await db.query.steps.findFirst({
-      where: and(
-        eq(steps.workflowId, workflowId as string),
-        eq(steps.id, stepId as string),
-      ),
+      where: and(eq(steps.id, stepId as string)),
+      with: {
+        workflows: true,
+      },
     });
 
     if (!stepDetails) {
       return next(CustomErrorHandler.notFound('Step not found'));
     }
 
-    const stepIndex = stepDetails.index;
+    if (stepDetails.workflows.userId !== req.user.id) {
+      return next(CustomErrorHandler.notAllowed());
+    }
 
-    await db
+    const [deletedStep] = await db
       .delete(steps)
       .where(
         and(
-          eq(steps.workflowId, workflowId as string),
-          gte(steps.index, stepIndex),
+          eq(workflows.id, stepDetails.workflowId),
+          gte(steps.index, stepDetails.index),
         ),
-      );
+      )
+      .returning();
 
-    if (stepIndex <= 1) {
-      await db
-        .update(workflows)
-        .set({
-          isActive: false,
-        })
-        .where(eq(workflows.id, workflowId as string));
+    if (stepDetails.index >= 2) {
+      await db.update(workflows).set({
+        isActive: true,
+      });
     }
 
     return res
       .status(200)
-      .send(ResponseHandler(200, 'Step deleted successfully', stepDetails));
+      .send(ResponseHandler(200, 'Step deleted successfully', deletedStep));
   },
 );
 
 export const updateStep = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { workflowId, stepId } = req.params;
-
+    const { id: stepId } = req.params;
     const body = updateStepSchema.parse(req.body);
 
-    if (Object.keys(body).length === 0) {
-      return next(CustomErrorHandler.badRequest('Nothing to update'));
-    }
-
-    const step = await db.query.steps.findFirst({
-      where: and(
-        eq(steps.workflowId, workflowId as string),
-        eq(steps.id, stepId as string),
-      ),
+    const stepDetails = await db.query.steps.findFirst({
+      where: and(eq(steps.id, stepId as string)),
+      with: {
+        workflows: true,
+      },
     });
 
-    if (!step) {
+    if (!stepDetails) {
       return next(CustomErrorHandler.notFound('Step not found'));
+    }
+
+    if (stepDetails.workflows.userId !== req.user.id) {
+      return next(CustomErrorHandler.notAllowed());
     }
 
     const [updatedStep] = await db
@@ -131,26 +138,8 @@ export const updateStep = asyncHandler(
       .where(eq(steps.id, stepId as string))
       .returning();
 
-    if (!updatedStep) {
-      return next(CustomErrorHandler.serverError());
-    }
-
-    if (updatedStep.type === StepType.TRIGGER && body.metadata) {
-      const { field, operator, value } = body.metadata.data.fields;
-      await db
-        .update(stepConditions)
-        .set({
-          field,
-          operator,
-          value: value as ConditionOperator,
-        })
-        .where(eq(stepConditions.stepId, stepId as string));
-    }
-
-    return res.status(200).send(
-      ResponseHandler(200, 'Step updated successfully', {
-        id: updatedStep.id,
-      }),
-    );
+    return res
+      .status(200)
+      .send(ResponseHandler(200, 'Step updated successfully', updatedStep));
   },
 );

@@ -1,5 +1,5 @@
 import db from '@repo/db';
-import { workflows } from '@repo/db/schema';
+import { steps, workflows } from '@repo/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
 import { asyncHandler, CustomErrorHandler, ResponseHandler } from '../utils';
@@ -113,7 +113,7 @@ export const getWorkflow = asyncHandler(
       where: and(eq(workflows.id, id as string), eq(workflows.userId, userId)),
       with: {
         steps: {
-          orderBy: (steps, { asc }) => [asc(steps.index)],
+          orderBy: (steps, { desc }) => [desc(steps.index)],
         },
       },
     });

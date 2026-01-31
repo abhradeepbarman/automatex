@@ -65,7 +65,6 @@ export const getConnections = asyncHandler(
         and(
           eq(connections.userId, req.user.id),
           eq(connections.app, provider as string),
-          stepType ? eq(connections.stepType, stepType as string) : undefined,
           gt(connections.expiresAt, new Date()),
         ),
       );
@@ -84,13 +83,9 @@ export const getConnections = asyncHandler(
 
 export const getTokenUrl = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { code, stepType } = req.body;
+    const { code } = req.body;
     if (!code) {
       return next(CustomErrorHandler.badRequest('Code is required'));
-    }
-
-    if (!stepType) {
-      return next(CustomErrorHandler.badRequest('Step type is required'));
     }
 
     const { provider } = req.params;
@@ -116,8 +111,7 @@ export const getTokenUrl = asyncHandler(
       .insert(connections)
       .values({
         app: appDetails.id,
-        stepType,
-        connectionName: name ? `${name}(${email})` : email,
+        name: name ? `${name}(${email})` : email,
         accessToken: access_token,
         refreshToken: refresh_token || '',
         expiresAt: new Date(Date.now() + expires_in * 1000),
@@ -135,7 +129,7 @@ export const getTokenUrl = asyncHandler(
       ResponseHandler(200, 'Credentials fetched successfully', {
         id: credentials.id,
         app: credentials.app,
-        name: credentials.connectionName,
+        name: credentials.name,
       }),
     );
   },

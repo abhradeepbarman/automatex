@@ -9,9 +9,9 @@ import { auth } from '../middlewares';
 
 const router: Router = Router();
 
-router.get('/:workflowId/:stepId', auth, getStep);
-router.post('/:workflowId', auth, addStep);
-router.put('/:workflowId/:stepId', auth, updateStep);
-router.delete('/:workflowId/:stepId', auth, deleteStep);
+router.get('/:id', auth, getStep);
+router.post('/workflow/:id', auth, addStep);
+router.put(':id', auth, updateStep);
+router.delete('/:id', auth, deleteStep);
 
 export default router;

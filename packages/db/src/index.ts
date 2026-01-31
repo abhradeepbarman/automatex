@@ -4,8 +4,6 @@ import {
   connections,
   runRelations,
   runs,
-  stepConditions,
-  stepConditionsRelations,
   stepRelations,
   steps,
   userRelations,
@@ -18,14 +16,12 @@ const schema = {
   users,
   workflows,
   steps,
-  stepConditions,
   connections,
   runs,
 
   userRelations,
   workflowRelations,
   stepRelations,
-  stepConditionsRelations,
   connectionRelations,
   runRelations,
 };

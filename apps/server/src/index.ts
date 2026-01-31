@@ -6,10 +6,9 @@ import { errorHandler } from './middlewares';
 import {
   authRoutes,
   credentialRoutes,
-  proxyRoutes,
+  dashboardRoutes,
   stepRoutes,
   workflowRoutes,
-  dashboardRoutes,
 } from './routes';
 
 const app: Application = express();
@@ -33,7 +32,6 @@ app.get('/', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/workflow', workflowRoutes);
 app.use('/api/v1/credential', credentialRoutes);
-app.use('/api/v1/proxy', proxyRoutes);
 app.use('/api/v1/step', stepRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 

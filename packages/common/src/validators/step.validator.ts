@@ -18,8 +18,13 @@ export const addStepSchema = z
     path: ['type'],
   });
 
-export const updateStepSchema = z.object({
-  app: z.string().optional(),
-  metadata: z.any().optional(),
-  connectionId: z.string().optional(),
-});
+export const updateStepSchema = z
+  .object({
+    app: z.string().optional(),
+    metadata: z.any().optional(),
+    connectionId: z.string().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Nothing to update',
+    path: ['app', 'metadata', 'connectionId'],
+  });
