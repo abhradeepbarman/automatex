@@ -34,7 +34,8 @@ export type FieldConfig = {
   placeholder?: string;
   description?: string;
   disabled?: boolean;
-  options?: { label: string; value: string }[];
+  required?: boolean;
+  options?: { label: string; value: any }[];
   dynamicOptions?: {
     url: string;
     labelKey: string;
@@ -46,10 +47,9 @@ export type FieldConfig = {
 };
 
 export enum AppType {
+  SYSTEM = 'system',
   GMAIL = 'gmail',
   NOTION = 'notion',
-  GITHUB = 'github',
-  DISCORD = 'discord',
 }
 
 export interface TokenResponse {
@@ -63,26 +63,25 @@ export interface IApp {
   name: string;
   description: string;
   icon?: string;
-  triggers: ITrigger[];
-  actions: IAction[];
-  getAuthUrl: () => string;
-  getToken: (code: string) => Promise<TokenResponse>;
-  getUserInfo: (
-    accessToken: string,
-  ) => Promise<{ id: string; name: string; email: string }>;
+  triggers?: ITrigger[];
+  actions?: IAction[];
+  auth?: {
+    getAuthUrl: () => string;
+    getToken: (code: string) => Promise<TokenResponse>;
+    getUserInfo: (accessToken: string) => Promise<any>;
+  };
 }
 
 export interface ITrigger {
   id: string;
   name: string;
   description: string;
-  pollingIntervalMs: number;
-  fields: FieldConfig[];
+  fields?: FieldConfig[];
 }
 
 export interface IAction {
   id: string;
   name: string;
   description: string;
-  fields: FieldConfig[];
+  fields?: FieldConfig[];
 }

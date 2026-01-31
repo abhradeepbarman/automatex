@@ -2,12 +2,22 @@ import { ConditionOperator, type ITrigger } from '../../../types';
 import { z } from 'zod';
 
 export const newEmail: ITrigger = {
-  id: 'NEW_EMAIL',
+  id: 'new-email',
   name: 'New email',
   description: 'Triggered when a new email is received',
-  pollingIntervalMs: 120,
 
   fields: [
+    {
+      label: 'Polling interval',
+      name: 'intervalMs',
+      type: 'select',
+      options: [
+        { label: '1 min', value: 60000 },
+        { label: '5 min', value: 300000 },
+        { label: '10 min', value: 600000 },
+      ],
+      validations: () => z.number().nonnegative('Interval is required'),
+    },
     {
       name: 'field',
       label: 'Select a field',
@@ -25,7 +35,6 @@ export const newEmail: ITrigger = {
       options: [
         { value: ConditionOperator.CONTAINS, label: 'Contains' },
         { value: ConditionOperator.EQUAL, label: 'Equal' },
-        { value: ConditionOperator.NOT_EQUAL, label: 'Not equal' },
       ],
       validations: () => z.string().nonempty('Operator is required'),
     },

@@ -1,30 +1,28 @@
-import z from 'zod';
-import { type ITrigger } from '../../../types';
+import { IAction } from '../../../types';
 
-export const sendEmail: ITrigger = {
-  id: 'SEND_EMAIL',
+export const sendEmail: IAction = {
+  id: 'send-email',
   name: 'Send email',
-  description: 'Send an email to a recipient',
+  description: 'Send an email',
 
   fields: [
     {
       name: 'to',
       label: 'To',
-      type: 'text',
-      validations: () =>
-        z.string().nonempty('To is required').email('Invalid email'),
+      type: 'email',
+      required: true,
     },
     {
       name: 'subject',
       label: 'Subject',
       type: 'text',
-      validations: () => z.string().nonempty('Subject is required'),
+      required: true,
     },
     {
       name: 'body',
       label: 'Body',
       type: 'textarea',
-      validations: () => z.string().nonempty('Body is required'),
+      required: true,
     },
   ],
 };

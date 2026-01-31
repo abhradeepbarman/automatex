@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { TokenResponse } from '../../../types';
 
-export const getAuthUrl = (): string => {
+const getAuthUrl = (): string => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   const response_type = 'code';
@@ -19,7 +19,7 @@ export const getAuthUrl = (): string => {
   return authUrl.toString();
 };
 
-export const getToken = async (code: string): Promise<TokenResponse> => {
+const getToken = async (code: string): Promise<TokenResponse> => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
@@ -47,7 +47,7 @@ export const getToken = async (code: string): Promise<TokenResponse> => {
   };
 };
 
-export const getUserInfo = async (
+const getUserInfo = async (
   accessToken: string,
 ): Promise<{ id: string; name: string; email: string }> => {
   const { data } = await axios.get(
@@ -64,4 +64,10 @@ export const getUserInfo = async (
     name: data.name,
     email: data.email,
   };
+};
+
+export default {
+  getAuthUrl,
+  getToken,
+  getUserInfo,
 };

@@ -1,6 +1,6 @@
 import { gmail } from './gmail';
-import { discord } from './discord';
+import { system } from './system';
 
-const apps = [gmail, discord];
+const apps = [gmail, system];
 
 export default apps;
