@@ -1,5 +1,5 @@
 import z from 'zod';
-import { ITrigger } from '../../../types';
+import { ITrigger, pollingInterval } from '../../../types';
 
 export const timer: ITrigger = {
   id: 'timer',
@@ -10,13 +10,22 @@ export const timer: ITrigger = {
       label: 'Interval',
       name: 'intervalMs',
       type: 'select',
-      defaultValue: '300000',
+      defaultValue: pollingInterval.FIVE_MINUTES.value,
       options: [
-        { label: '1 min', value: '60000' },
-        { label: '5 min', value: '300000' },
-        { label: '10 min', value: '600000' },
+        {
+          label: pollingInterval.ONE_MINUTE.label,
+          value: pollingInterval.ONE_MINUTE.value,
+        },
+        {
+          label: pollingInterval.FIVE_MINUTES.label,
+          value: pollingInterval.FIVE_MINUTES.value,
+        },
+        {
+          label: pollingInterval.TEN_MINUTES.label,
+          value: pollingInterval.TEN_MINUTES.value,
+        },
       ],
-      validations: () => z.string().nonempty('Value is required'),
+      validations: () => z.string().nonempty('Interval is required'),
     },
   ],
 };

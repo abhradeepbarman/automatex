@@ -36,12 +36,6 @@ export type FieldConfig = {
   disabled?: boolean;
   required?: boolean;
   options?: { label: string; value: string }[];
-  dynamicOptions?: {
-    url: string;
-    labelKey: string;
-    valueKey: string;
-    dataPath?: string;
-  };
   validations?: () => any;
   defaultValue?: any;
 };
@@ -85,3 +79,18 @@ export interface IAction {
   description: string;
   fields?: FieldConfig[];
 }
+
+export const pollingInterval = {
+  ONE_MINUTE: {
+    label: '1 min',
+    value: '60000',
+  },
+  FIVE_MINUTES: {
+    label: '5 min',
+    value: '300000',
+  },
+  TEN_MINUTES: {
+    label: '10 min',
+    value: '600000',
+  },
+};
