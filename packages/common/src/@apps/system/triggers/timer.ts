@@ -1,7 +1,12 @@
 import z from 'zod';
-import { ITrigger, pollingInterval } from '../../../types';
+import { ITrigger, PollingInterval, ReturnResponse } from '../../../types';
+import { isIntervalPassed } from '../..';
 
-export const timer: ITrigger = {
+interface TimerMetadata {
+  intervalMs: PollingInterval;
+}
+
+export const timer: ITrigger<TimerMetadata> = {
   id: 'timer',
   name: 'Timer',
   description: 'Triggered when a timer is set',
@@ -10,22 +15,44 @@ export const timer: ITrigger = {
       label: 'Interval',
       name: 'intervalMs',
       type: 'select',
-      defaultValue: pollingInterval.FIVE_MINUTES.value,
+      defaultValue: PollingInterval.FIVE_MINUTES,
       options: [
         {
-          label: pollingInterval.ONE_MINUTE.label,
-          value: pollingInterval.ONE_MINUTE.value,
+          label: '1 min',
+          value: PollingInterval.ONE_MINUTE,
         },
         {
-          label: pollingInterval.FIVE_MINUTES.label,
-          value: pollingInterval.FIVE_MINUTES.value,
+          label: '5 min',
+          value: PollingInterval.FIVE_MINUTES,
         },
         {
-          label: pollingInterval.TEN_MINUTES.label,
-          value: pollingInterval.TEN_MINUTES.value,
+          label: '10 min',
+          value: PollingInterval.TEN_MINUTES,
         },
       ],
       validations: () => z.string().nonempty('Interval is required'),
     },
   ],
+
+  run: (metadata, lastExecutedAt): ReturnResponse => {
+    try {
+      if (isIntervalPassed(lastExecutedAt, Number(metadata.intervalMs))) {
+        return {
+          success: true,
+          message: 'Timer triggered',
+        };
+      }
+
+      return {
+        success: false,
+        message: 'Timer not triggered',
+      };
+    } catch (error) {
+      console.error('Error executing timer trigger:', error);
+      return {
+        success: false,
+        message: 'Error executing timer trigger',
+      };
+    }
+  },
 };

@@ -1,9 +1,9 @@
 import db from '@repo/db';
-import { runs, workflows } from '@repo/db/schema';
+import { executionLogs, workflows } from '@repo/db/schema';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
 import { asyncHandler, ResponseHandler } from '../utils';
-import { ExecutionResult } from '@repo/common/types';
+import { ExecutionStatus } from '@repo/common/types';
 
 export const getDashboardStats = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -19,22 +19,25 @@ export const getDashboardStats = asyncHandler(
     // Get total runs in last 30 days
     const runsCount = await db
       .select({ count: sql<number>`count(*)` })
-      .from(runs)
-      .innerJoin(workflows, eq(runs.workflowId, workflows.id))
+      .from(executionLogs)
+      .innerJoin(workflows, eq(executionLogs.workflowId, workflows.id))
       .where(
-        and(eq(workflows.userId, userId), gt(runs.createdAt, thirtyDaysAgo)),
+        and(
+          eq(workflows.userId, userId),
+          gt(executionLogs.createdAt, thirtyDaysAgo),
+        ),
       );
 
     // Get total errors
     const errorsCount = await db
       .select({ count: sql<number>`count(*)` })
-      .from(runs)
-      .innerJoin(workflows, eq(runs.workflowId, workflows.id))
+      .from(executionLogs)
+      .innerJoin(workflows, eq(executionLogs.workflowId, workflows.id))
       .where(
         and(
           eq(workflows.userId, userId),
-          gt(runs.createdAt, thirtyDaysAgo),
-          eq(runs.result, ExecutionResult.FAILURE),
+          gt(executionLogs.createdAt, thirtyDaysAgo),
+          eq(executionLogs.status, ExecutionStatus.FAILED),
         ),
       );
 

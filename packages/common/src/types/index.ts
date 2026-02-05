@@ -1,3 +1,16 @@
+export interface ReturnResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+export enum ExecutionStatus {
+  PENDING = 'PENDING',
+  RUNNING = 'RUNNING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+}
+
 export enum ConditionOperator {
   EQUAL = 'EQUAL',
   NOT_EQUAL = 'NOT_EQUAL',
@@ -7,17 +20,6 @@ export enum ConditionOperator {
 export enum StepType {
   TRIGGER = 'TRIGGER',
   ACTION = 'ACTION',
-}
-
-export enum ExecutionResult {
-  SUCCESS = 'SUCCESS',
-  FAILURE = 'FAILURE',
-}
-
-export enum ExecutionStatus {
-  PENDING = 'PENDING',
-  RUNNING = 'RUNNING',
-  COMPLETED = 'COMPLETED',
 }
 
 export type FieldConfig = {
@@ -66,31 +68,31 @@ export interface IApp {
   };
 }
 
-export interface ITrigger {
+export interface ITrigger<T = any> {
   id: string;
   name: string;
   description: string;
   fields?: FieldConfig[];
+  run: (
+    metadata: T,
+    lastExecutedAt: Date | null,
+    accessToken?: string,
+  ) => Promise<ReturnResponse> | ReturnResponse;
 }
 
-export interface IAction {
+export interface IAction<T = any> {
   id: string;
   name: string;
   description: string;
   fields?: FieldConfig[];
+  run: (
+    metadata: T,
+    accessToken?: string,
+  ) => Promise<ReturnResponse> | ReturnResponse;
 }
 
-export const pollingInterval = {
-  ONE_MINUTE: {
-    label: '1 min',
-    value: '60000',
-  },
-  FIVE_MINUTES: {
-    label: '5 min',
-    value: '300000',
-  },
-  TEN_MINUTES: {
-    label: '10 min',
-    value: '600000',
-  },
-};
+export enum PollingInterval {
+  ONE_MINUTE = '60000',
+  FIVE_MINUTES = '300000',
+  TEN_MINUTES = '600000',
+}
