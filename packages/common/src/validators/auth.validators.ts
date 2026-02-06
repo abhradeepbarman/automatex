@@ -4,10 +4,10 @@ export const registerSchema = z
   .object({
     name: z
       .string()
-      .nonempty('Name is required')
+      .min(1, 'Name is required')
       .max(255, 'Name must be less than 255 characters'),
 
-    email: z.string().nonempty('Email is required').email('Invalid email'),
+    email: z.string().min(1, 'Email is required').email('Invalid email'),
 
     password: z
       .string()
@@ -18,7 +18,7 @@ export const registerSchema = z
         'Password must contain uppercase, lowercase, number, and special character',
       ),
 
-    confirmPassword: z.string().nonempty('Confirm Password is required'),
+    confirmPassword: z.string().min(1, 'Confirm Password is required'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -26,6 +26,6 @@ export const registerSchema = z
   });
 
 export const loginSchema = z.object({
-  email: z.string().nonempty('Email is required').email('Invalid email'),
-  password: z.string().nonempty('Password is required'),
+  email: z.string().min(1, 'Email is required').email('Invalid email'),
+  password: z.string().min(1, 'Password is required'),
 });

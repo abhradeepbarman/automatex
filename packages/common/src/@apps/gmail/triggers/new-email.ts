@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import {
   ConditionOperator,
   PollingInterval,
@@ -28,7 +28,7 @@ export const newEmail: ITrigger<NewEmailMetadata> = {
         { value: 'subject', label: 'Subject' },
         { value: 'body', label: 'Body' },
       ],
-      validations: () => z.string().nonempty('Field is required'),
+      validations: () => z.string().min(1, 'Field is required'),
     },
     {
       name: 'operator',
@@ -38,13 +38,13 @@ export const newEmail: ITrigger<NewEmailMetadata> = {
         { value: ConditionOperator.CONTAINS, label: 'Contains' },
         { value: ConditionOperator.EQUAL, label: 'Equal' },
       ],
-      validations: () => z.string().nonempty('Operator is required'),
+      validations: () => z.string().min(1, 'Operator is required'),
     },
     {
       name: 'value',
       label: 'Value',
       type: 'text',
-      validations: () => z.string().nonempty('Value is required'),
+      validations: () => z.string().min(1, 'Value is required'),
     },
   ],
 
@@ -77,6 +77,7 @@ export const newEmail: ITrigger<NewEmailMetadata> = {
         return {
           success: false,
           message: 'No new emails found',
+          statusCode: 204,
         };
       }
 
@@ -126,6 +127,7 @@ export const newEmail: ITrigger<NewEmailMetadata> = {
         return {
           success: false,
           message: 'No matching emails found',
+          statusCode: 204,
         };
       }
 
@@ -133,12 +135,18 @@ export const newEmail: ITrigger<NewEmailMetadata> = {
         success: true,
         message: 'New emails found',
         data: validMessages,
+        statusCode: 200,
       };
     } catch (error) {
+      const err = error as AxiosError<any>;
       console.error('Error executing new email trigger:', error);
       return {
         success: false,
-        message: 'Error executing new email trigger',
+        message:
+          err.response?.data?.error?.message ||
+          'Error executing new email trigger',
+        statusCode: err.response?.status || 500,
+        error: err.message,
       };
     }
   },

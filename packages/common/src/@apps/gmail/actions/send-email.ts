@@ -1,6 +1,6 @@
-import z from 'zod';
-import { IAction, ReturnResponse } from '../../../types';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import { ReturnResponse, type IAction } from '../../../types';
+import { z } from 'zod';
 
 interface SendEmailMetadata {
   to: string;
@@ -10,59 +10,58 @@ interface SendEmailMetadata {
 
 export const sendEmail: IAction<SendEmailMetadata> = {
   id: 'send-email',
-  name: 'Send email',
-  description: 'Send an email',
+  name: 'Send Email',
+  description: 'Send an email via Gmail',
 
   fields: [
     {
       name: 'to',
       label: 'To',
       type: 'email',
-      required: true,
-      validations: () =>
-        z.string().nonempty('To is required').email('Invalid email'),
+      placeholder: 'recipient@example.com',
+      validations: () => z.string().email('Invalid email address'),
     },
     {
       name: 'subject',
       label: 'Subject',
       type: 'text',
-      required: true,
-      validations: () => z.string().nonempty('Subject is required'),
+      placeholder: 'Email subject',
+      validations: () => z.string().min(1, 'Subject is required'),
     },
     {
       name: 'body',
       label: 'Body',
       type: 'textarea',
-      required: true,
-      validations: () => z.string().nonempty('Body is required'),
+      placeholder: 'Email body',
+      validations: () => z.string().min(1, 'Body is required'),
     },
   ],
 
   run: async (metadata, accessToken): Promise<ReturnResponse> => {
     try {
       const { to, subject, body } = metadata;
-      const emailContent = [
+
+      // Create the email in RFC 2822 format
+      const email = [
         `To: ${to}`,
         `Subject: ${subject}`,
-        'Content-Type: text/plain; charset="UTF-8"',
-        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=utf-8',
         '',
         body,
       ].join('\r\n');
 
-      const encodedEmail = Buffer.from(emailContent)
+      // Encode the email in base64url format
+      const encodedEmail = Buffer.from(email)
         .toString('base64')
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/, '');
 
-      const postData = JSON.stringify({
-        raw: encodedEmail,
-      });
-
       const response = await axios.post(
         'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
-        postData,
+        {
+          raw: encodedEmail,
+        },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -71,21 +70,20 @@ export const sendEmail: IAction<SendEmailMetadata> = {
         },
       );
 
-      if (response.status === 200) {
-        return {
-          success: true,
-          message: 'Email sent successfully',
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Failed to send email',
-        };
-      }
+      return {
+        success: true,
+        message: 'Email sent successfully',
+        statusCode: 200,
+        data: response.data,
+      };
     } catch (error) {
+      const err = error as AxiosError<any>;
+
       return {
         success: false,
-        message: 'Failed to send email',
+        message: err.response?.data?.error?.message || 'Error sending email',
+        statusCode: err.response?.status || 500,
+        error: err.message,
       };
     }
   },

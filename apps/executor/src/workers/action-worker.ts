@@ -2,10 +2,11 @@ import { Worker, Job } from 'bullmq';
 import config from '../config';
 import { actionQueue, queueName } from '../queue';
 import db from '@repo/db';
-import { eq } from 'drizzle-orm';
-import { steps } from '@repo/db/schema';
-import { StepType } from '@repo/common/types';
+import { eq, and } from 'drizzle-orm';
+import { connections, steps } from '@repo/db/schema';
+import { StepType, type IApp } from '@repo/common/types';
 import apps from '@repo/common/@apps';
+import { getRefreshTokenAndUpdate } from '../utils';
 
 interface ActionJobData {
   stepId: string;
@@ -63,13 +64,58 @@ export const actionWorker = new Worker<ActionJobData>(
         return;
       }
 
-      const { success } = await actionDetails.run(
+      const app = apps.find((app) => app.id === appId);
+      if (!app) {
+        console.log(`App ${appId} not found`);
+        return;
+      }
+
+      let { success, message, statusCode } = await actionDetails.run(
         fields,
         stepDetails.connections?.accessToken,
       );
 
+      console.log('message--', statusCode);
+
+      // Handle token expiration and retry
+      if (
+        !success &&
+        statusCode === 401 &&
+        app.auth &&
+        stepDetails.connectionId &&
+        stepDetails.connections?.refreshToken
+      ) {
+        console.log(
+          `Token expired for step ${stepId}, refreshing and retrying...`,
+        );
+        try {
+          await getRefreshTokenAndUpdate(stepDetails.connectionId, app);
+
+          // Retry with refreshed token
+          const updatedConnection = await db.query.connections.findFirst({
+            where: eq(connections.id, stepDetails.connectionId),
+          });
+
+          if (updatedConnection?.accessToken) {
+            console.log(`Retrying action ${actionId} with refreshed token`);
+            const retryResult = await actionDetails.run(
+              fields,
+              updatedConnection.accessToken,
+            );
+            success = retryResult.success;
+            message = retryResult.message;
+            statusCode = retryResult.statusCode;
+          }
+        } catch (refreshError) {
+          console.error(
+            `Failed to refresh token for step ${stepId}:`,
+            refreshError,
+          );
+        }
+      }
+
       if (!success) {
-        console.log(`Action ${actionId} failed for step ${stepId}`);
+        console.log(`Action ${actionId} failed for step ${stepId}: ${message}`);
         return;
       }
 
@@ -78,7 +124,10 @@ export const actionWorker = new Worker<ActionJobData>(
       );
 
       const nextStepDetails = await db.query.steps.findFirst({
-        where: eq(steps.index, stepDetails.index + 1),
+        where: and(
+          eq(steps.workflowId, workflowDetails.id),
+          eq(steps.index, stepDetails.index + 1),
+        ),
       });
 
       if (!nextStepDetails) {
@@ -94,6 +143,9 @@ export const actionWorker = new Worker<ActionJobData>(
       });
     } catch (error) {
       console.error('Action failed with error:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+      }
     }
   },
   {

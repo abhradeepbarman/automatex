@@ -26,6 +26,6 @@ const schema = {
   executionLogRelations,
 };
 
-const db = drizzle(process.env.DATABASE_URL!, { schema, logger: true });
+const db = drizzle(process.env.DATABASE_URL!, { schema });
 
 export default db;

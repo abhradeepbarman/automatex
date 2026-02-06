@@ -30,7 +30,7 @@ export const timer: ITrigger<TimerMetadata> = {
           value: PollingInterval.TEN_MINUTES,
         },
       ],
-      validations: () => z.string().nonempty('Interval is required'),
+      validations: () => z.string().min(1, 'Interval is required'),
     },
   ],
 
@@ -40,18 +40,21 @@ export const timer: ITrigger<TimerMetadata> = {
         return {
           success: true,
           message: 'Timer triggered',
+          statusCode: 200,
         };
       }
 
       return {
         success: false,
         message: 'Timer not triggered',
+        statusCode: 400,
       };
     } catch (error) {
       console.error('Error executing timer trigger:', error);
       return {
         success: false,
         message: 'Error executing timer trigger',
+        statusCode: 500,
       };
     }
   },

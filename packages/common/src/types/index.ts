@@ -1,6 +1,8 @@
 export interface ReturnResponse {
   success: boolean;
   message: string;
+  error?: string;
+  statusCode: number;
   data?: any;
 }
 
@@ -65,6 +67,7 @@ export interface IApp {
     getAuthUrl: () => string;
     getToken: (code: string) => Promise<TokenResponse>;
     getUserInfo: (accessToken: string) => Promise<any>;
+    refreshAccessToken: (refreshToken: string) => Promise<TokenResponse>;
   };
 }
 

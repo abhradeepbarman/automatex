@@ -10,8 +10,8 @@ export const actionQueue = new Queue(queueName, {
   },
 });
 
-actionQueue.on('error', (job) => {
-  console.log(`Job ${job.name} failed`);
+actionQueue.on('error', (error) => {
+  console.error('Queue error:', error);
 });
 
 console.log('Queue initialized');

@@ -7,6 +7,7 @@ const getAuthUrl = (): string => {
   const response_type = 'code';
   const scopes = [
     'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
   ];
@@ -16,6 +17,10 @@ const getAuthUrl = (): string => {
   authUrl.searchParams.append('redirect_uri', redirectUri!);
   authUrl.searchParams.append('response_type', response_type);
   authUrl.searchParams.append('scope', scopes.join(' '));
+
+  authUrl.searchParams.append('access_type', 'offline');
+  authUrl.searchParams.append('prompt', 'consent');
+
   return authUrl.toString();
 };
 
@@ -66,8 +71,37 @@ const getUserInfo = async (
   };
 };
 
+const refreshAccessToken = async (
+  refreshToken: string,
+): Promise<TokenResponse> => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const grant_type = 'refresh_token';
+
+  const tokenUrl = 'https://oauth2.googleapis.com/token';
+  const params = new URLSearchParams({
+    client_id: clientId!,
+    client_secret: clientSecret!,
+    grant_type,
+    refresh_token: refreshToken,
+  });
+
+  const { data } = await axios.post(tokenUrl, params.toString(), {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
+
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || refreshToken,
+    expires_in: data.expires_in,
+  };
+};
+
 export default {
   getAuthUrl,
   getToken,
   getUserInfo,
+  refreshAccessToken,
 };

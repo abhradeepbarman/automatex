@@ -1,10 +1,30 @@
 import apps from '@repo/common/@apps';
-import { ExecutionStatus, StepType } from '@repo/common/types';
+import { StepType, type IApp } from '@repo/common/types';
 import db from '@repo/db';
-import { executionLogs, workflows } from '@repo/db/schema';
+import { connections, workflows } from '@repo/db/schema';
 import { eq } from 'drizzle-orm';
 import cron from 'node-cron';
 import { actionQueue, queueName } from '../queue';
+import { getRefreshTokenAndUpdate } from '../utils';
+
+function hasValidAuth(app: IApp, triggerDetails: any): boolean {
+  if (!app.auth) {
+    return true;
+  }
+
+  if (!triggerDetails.connections || !triggerDetails.connections.accessToken) {
+    return false;
+  }
+
+  if (
+    triggerDetails.connections.expiresAt &&
+    new Date(triggerDetails.connections.expiresAt) < new Date()
+  ) {
+    return false;
+  }
+
+  return true;
+}
 
 export function startTriggerChecker() {
   // Run every minute
@@ -29,7 +49,7 @@ export function startTriggerChecker() {
       }
 
       for (const workflow of activeWorkflows) {
-        const triggerDetails = workflow.steps.find((step) => step.index == 0);
+        const triggerDetails = workflow.steps.find((step) => step.index === 0);
         if (!triggerDetails) {
           console.log(`Workflow ${workflow.id} has no trigger step`);
           continue;
@@ -65,35 +85,75 @@ export function startTriggerChecker() {
           continue;
         }
 
-        if (
-          app.auth &&
-          (!triggerDetails.connections ||
-            !triggerDetails.connections?.accessToken ||
-            (triggerDetails.connections?.expiresAt &&
-              new Date(triggerDetails.connections?.expiresAt) < new Date()))
-        ) {
-          console.log(`Workflow ${workflow.id} has valid auth issues`);
+        if (!hasValidAuth(app, triggerDetails)) {
+          console.log(`Workflow ${workflow.id} has invalid auth`);
           continue;
         }
 
         console.log(
           `Running trigger ${trigger.id} for workflow ${workflow.id}`,
         );
-        const { success, message } = await trigger.run(
+        let { success, message, statusCode } = await trigger.run(
           (triggerDetails.metadata as any).data.fields,
           workflow.lastExecutedAt,
           triggerDetails.connections?.accessToken || '',
         );
 
-        if (success) {
+        console.log('message', message);
+
+        if (
+          !success &&
+          statusCode === 401 &&
+          app.auth &&
+          triggerDetails.connections?.refreshToken &&
+          triggerDetails.connectionId
+        ) {
+          console.log(
+            `Token expired for workflow ${workflow.id}, refreshing and retrying...`,
+          );
+          try {
+            await getRefreshTokenAndUpdate(triggerDetails.connectionId, app);
+
+            // Retry with refreshed token
+            const updatedConnection = await db.query.connections.findFirst({
+              where: eq(connections.id, triggerDetails.connectionId),
+            });
+
+            if (updatedConnection?.accessToken) {
+              console.log(
+                `Retrying trigger ${trigger.id} with refreshed token`,
+              );
+              const retryResult = await trigger.run(
+                (triggerDetails.metadata as any).data.fields,
+                workflow.lastExecutedAt,
+                updatedConnection.accessToken,
+              );
+              success = retryResult.success;
+              message = retryResult.message;
+              statusCode = retryResult.statusCode;
+            }
+          } catch (refreshError) {
+            console.error(
+              `Failed to refresh token for workflow ${workflow.id}:`,
+              refreshError,
+            );
+          }
+        }
+
+        // Process successful trigger execution
+        if (success && statusCode === 200) {
           console.log(
             `Trigger ${trigger.id} ran successfully for workflow ${workflow.id}`,
           );
-          await db.update(workflows).set({
-            lastExecutedAt: new Date(),
-          });
+          await db
+            .update(workflows)
+            .set({
+              lastExecutedAt: new Date(),
+            })
+            .where(eq(workflows.id, workflow.id));
+
           const firstActionDetails = workflow.steps.find(
-            (step) => step.index == 1,
+            (step) => step.index === 1,
           );
           if (!firstActionDetails) {
             console.log(
@@ -126,6 +186,9 @@ export function startTriggerChecker() {
       }
     } catch (error) {
       console.error('Error checking triggers:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+      }
     }
   });
 
