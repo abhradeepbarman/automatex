@@ -1,11 +1,8 @@
-import { uuid } from 'drizzle-orm/pg-core';
-import { pgTable } from 'drizzle-orm/pg-core';
-import { workflows } from './workflows';
-import { timestamp } from 'drizzle-orm/pg-core';
-import { steps } from './steps';
-import { varchar } from 'drizzle-orm/pg-core';
 import { ExecutionStatus } from '@repo/common/types';
 import { relations } from 'drizzle-orm';
+import { pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { steps } from './steps';
+import { workflows } from './workflows';
 
 export const executionLogs = pgTable('execution_logs', {
   id: uuid('id').notNull().primaryKey().defaultRandom(),
@@ -16,6 +13,7 @@ export const executionLogs = pgTable('execution_logs', {
     .notNull()
     .references(() => steps.id),
   jobId: varchar('job_id').notNull(),
+  message: varchar('message').notNull(),
   status: varchar('status', {
     enum: [
       ExecutionStatus.PENDING,

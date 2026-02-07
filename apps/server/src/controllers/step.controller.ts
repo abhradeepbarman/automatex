@@ -9,7 +9,7 @@ export const addStep = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id: workflowId } = req.params;
     const body = addStepSchema.parse(req.body);
-    const { app, metadata, index, type, connectionId } = body;
+    const { app, stepName, metadata, index, type, connectionId } = body;
 
     const workflowDetails = await db.query.workflows.findFirst({
       where: and(eq(workflows.id, workflowId as string)),
@@ -28,6 +28,7 @@ export const addStep = asyncHandler(
       .values({
         workflowId: workflowId as string,
         app,
+        name: stepName,
         metadata,
         index: index,
         type,

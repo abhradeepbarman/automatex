@@ -65,6 +65,7 @@ const TriggerSheet = ({
       stepService.addStep(
         workflowId!,
         commonFields.appId,
+        commonFields.triggerId,
         0,
         StepType.TRIGGER,
         commonFields.connectionId,

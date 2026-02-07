@@ -1,7 +1,7 @@
 import apps from '@repo/common/@apps';
-import { StepType, type IApp } from '@repo/common/types';
+import { StepType, type IApp, ExecutionStatus } from '@repo/common/types';
 import db from '@repo/db';
-import { connections, workflows } from '@repo/db/schema';
+import { connections, workflows, executionLogs } from '@repo/db/schema';
 import { eq } from 'drizzle-orm';
 import cron from 'node-cron';
 import { actionQueue, queueName } from '../queue';
@@ -42,11 +42,10 @@ export function startTriggerChecker() {
         },
       });
 
-      console.log(`Found ${activeWorkflows.length} active workflows`);
-
       if (!activeWorkflows || activeWorkflows.length === 0) {
         return;
       }
+      console.log(`Found ${activeWorkflows.length} active workflows`);
 
       for (const workflow of activeWorkflows) {
         const triggerDetails = workflow.steps.find((step) => step.index === 0);
@@ -93,13 +92,31 @@ export function startTriggerChecker() {
         console.log(
           `Running trigger ${trigger.id} for workflow ${workflow.id}`,
         );
+
+        // Create execution log for trigger
+        const [executionLog] = await db
+          .insert(executionLogs)
+          .values({
+            workflowId: workflow.id,
+            stepId: triggerDetails.id,
+            jobId: `trigger-${workflow.id}-${Date.now()}`,
+            message: `Trigger ${trigger.name} execution started`,
+            status: ExecutionStatus.RUNNING,
+          })
+          .returning();
+
+        if (!executionLog) {
+          console.log(
+            `Failed to create execution log for workflow ${workflow.id}`,
+          );
+          continue;
+        }
+
         let { success, message, statusCode } = await trigger.run(
           (triggerDetails.metadata as any).data.fields,
           workflow.lastExecutedAt,
           triggerDetails.connections?.accessToken || '',
         );
-
-        console.log('message', message);
 
         if (
           !success &&
@@ -145,6 +162,17 @@ export function startTriggerChecker() {
           console.log(
             `Trigger ${trigger.id} ran successfully for workflow ${workflow.id}`,
           );
+
+          // Update execution log to completed
+          await db
+            .update(executionLogs)
+            .set({
+              status: ExecutionStatus.COMPLETED,
+              message:
+                message || `Trigger ${trigger.name} completed successfully`,
+            })
+            .where(eq(executionLogs.id, executionLog.id));
+
           await db
             .update(workflows)
             .set({
@@ -173,6 +201,7 @@ export function startTriggerChecker() {
 
           await actionQueue.add(queueName, {
             stepId: firstActionDetails.id,
+            jobId: `${firstActionDetails.id}-${Date.now()}`,
           });
 
           console.log(
@@ -182,6 +211,15 @@ export function startTriggerChecker() {
           console.log(
             `Trigger ${trigger.id} failed for workflow ${workflow.id}: ${message}`,
           );
+
+          // Update execution log to failed
+          await db
+            .update(executionLogs)
+            .set({
+              status: ExecutionStatus.FAILED,
+              message: message || `Trigger ${trigger.name} failed`,
+            })
+            .where(eq(executionLogs.id, executionLog.id));
         }
       }
     } catch (error) {

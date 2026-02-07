@@ -23,6 +23,7 @@ export const steps = pgTable('steps', {
   type: varchar('type', {
     enum: [StepType.TRIGGER, StepType.ACTION],
   }).notNull(),
+  name: varchar('name').notNull(),
   index: integer('index').notNull(),
   app: varchar('app').notNull(),
   metadata: jsonb('metadata'),

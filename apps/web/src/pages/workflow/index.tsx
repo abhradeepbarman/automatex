@@ -4,6 +4,7 @@ import AddTriggerButtonNode from '@/components/nodes/add-trigger-button-node';
 import TriggerNode from '@/components/nodes/trigger-node';
 import ActionSheet from '@/components/sheets/action-sheet';
 import TriggerSheet from '@/components/sheets/trigger-sheet';
+import LogsSheet from '@/components/sheets/logs-sheet';
 import DeleteConfirmationDialog from '@/components/dialog/delete-confirmation-dialog';
 import { Button } from '@/components/ui/button';
 import { INITIAL_X, INITIAL_Y, NODE_SPACING } from '@/constants/workflow';
@@ -22,7 +23,7 @@ import {
   type OnNodesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -54,6 +55,7 @@ export default function Workflow() {
   const [edges, setEdges] = useState<Edge[]>([]);
   const [triggerSheetOpen, setTriggerSheetOpen] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [logsSheetOpen, setLogsSheetOpen] = useState(false);
   const [selectedSourceNodeId, setSelectedSourceNodeId] = useState<string>('');
   const [nodeIdToDelete, setNodeIdToDelete] = useState<string | null>(null);
 
@@ -137,7 +139,6 @@ export default function Workflow() {
 
   return (
     <div className="w-screen h-screen flex flex-col">
-      {/* Header with Back Button */}
       <div className="absolute top-4 left-4 z-10">
         <Button
           variant="outline"
@@ -147,6 +148,18 @@ export default function Workflow() {
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
+        </Button>
+      </div>
+
+      <div className="absolute top-4 right-4 z-10">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setLogsSheetOpen(true)}
+          className="flex items-center gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          Execution Logs
         </Button>
       </div>
 
@@ -214,6 +227,8 @@ export default function Workflow() {
         setActionSheetOpen={setActionSheetOpen}
         setTriggerSheetOpen={setTriggerSheetOpen}
       />
+
+      <LogsSheet open={logsSheetOpen} onOpenChange={setLogsSheetOpen} />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import axiosInstance from '@/lib/axios';
+import type { StepType } from '@repo/common/types';
 import type { Node } from '@xyflow/react';
 
 export interface ICreateWorkflowResponse {
@@ -49,6 +50,23 @@ export interface IGetAllWorkflowsResponse {
   };
 }
 
+export interface IExecutionLog {
+  id: string;
+  step_name: string;
+  executed_at: string;
+  status: string;
+  step_type: StepType;
+}
+
+export interface IGetWorkflowExecutionLogsResponse {
+  executionLogs: IExecutionLog[];
+  pagination: {
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  };
+}
+
 class WorkflowService {
   async createWorkflow(name?: string): Promise<ICreateWorkflowResponse> {
     const { data } = await axiosInstance.post('/workflow', {
@@ -82,6 +100,17 @@ class WorkflowService {
     const { data } = await axiosInstance.put(`/workflow/${workflowId}`, {
       name,
       isActive,
+    });
+    return data.data;
+  }
+
+  async getWorkflowExecutionLogs(
+    workflowId: string,
+    limit: number = 20,
+    cursor?: number,
+  ): Promise<IGetWorkflowExecutionLogsResponse> {
+    const { data } = await axiosInstance.get(`/workflow/${workflowId}/logs`, {
+      params: { limit, current: cursor || 1 },
     });
     return data.data;
   }

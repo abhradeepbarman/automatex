@@ -72,6 +72,7 @@ const ActionSheet = ({
       return stepService.addStep(
         workflowId!,
         commonFields.appId,
+        commonFields.actionId,
         stepNodes.length,
         StepType.ACTION,
         commonFields.connectionId,

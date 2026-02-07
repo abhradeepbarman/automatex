@@ -5,6 +5,7 @@ class StepService {
   async addStep(
     workflowId: string,
     app: string,
+    stepName: string,
     index: number,
     type: StepType,
     connectionId: string,
@@ -15,6 +16,7 @@ class StepService {
       index,
       type,
       connectionId,
+      stepName,
       metadata,
     });
 

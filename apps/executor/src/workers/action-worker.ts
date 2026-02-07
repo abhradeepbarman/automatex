@@ -3,13 +3,14 @@ import config from '../config';
 import { actionQueue, queueName } from '../queue';
 import db from '@repo/db';
 import { eq, and } from 'drizzle-orm';
-import { connections, steps } from '@repo/db/schema';
-import { StepType, type IApp } from '@repo/common/types';
+import { connections, steps, executionLogs } from '@repo/db/schema';
+import { StepType, type IApp, ExecutionStatus } from '@repo/common/types';
 import apps from '@repo/common/@apps';
 import { getRefreshTokenAndUpdate } from '../utils';
 
 interface ActionJobData {
   stepId: string;
+  jobId: string;
 }
 
 export const actionWorker = new Worker<ActionJobData>(
@@ -17,7 +18,7 @@ export const actionWorker = new Worker<ActionJobData>(
   async (job: Job<ActionJobData>) => {
     try {
       console.log('Action worker started for job:', job.id);
-      const { stepId } = job.data;
+      const { stepId, jobId } = job.data;
       console.log(`Processing step ${stepId}`);
 
       const stepDetails = await db.query.steps.findFirst({
@@ -28,24 +29,48 @@ export const actionWorker = new Worker<ActionJobData>(
         },
       });
 
-      if (!stepDetails) {
-        console.log(`Step ${stepId} not found`);
+      if (!stepDetails?.workflows) {
+        console.log(`Step ${stepId} or workflow not found`);
+        return;
+      }
+
+      const app = apps.find((app) => app.id === stepDetails.app);
+      const actionId = (stepDetails.metadata as any)?.data?.actionId;
+      const actionDetails = app?.actions?.find(
+        (action) => action.id === actionId,
+      );
+
+      const [executionLog] = await db
+        .insert(executionLogs)
+        .values({
+          workflowId: stepDetails.workflows.id,
+          stepId: stepId,
+          jobId: jobId || job.id!.toString(),
+          message: `Action ${actionDetails?.name || actionId || 'unknown'} execution started`,
+          status: ExecutionStatus.RUNNING,
+        })
+        .returning();
+
+      if (!executionLog) {
+        console.log(`Failed to create execution log for step ${stepId}`);
         return;
       }
 
       if (stepDetails.type !== StepType.ACTION) {
         console.log(`Step ${stepId} is not an action`);
+        await db
+          .update(executionLogs)
+          .set({
+            status: ExecutionStatus.FAILED,
+            message: `Step is not an action (type: ${stepDetails.type})`,
+          })
+          .where(eq(executionLogs.id, executionLog.id));
         return;
       }
 
       const workflowDetails = stepDetails.workflows;
-      if (!workflowDetails) {
-        console.log(`Workflow not found for step ${stepId}`);
-        return;
-      }
 
-      const { actionId, appId, index, fields } = (stepDetails.metadata as any)
-        .data;
+      const { appId, index, fields } = (stepDetails.metadata as any).data;
 
       console.log(
         `Executing action ${actionId} for app ${appId} in workflow ${workflowDetails.id}`,
@@ -53,20 +78,37 @@ export const actionWorker = new Worker<ActionJobData>(
 
       if (!actionId) {
         console.log('Action ID not found in step metadata');
+        await db
+          .update(executionLogs)
+          .set({
+            status: ExecutionStatus.FAILED,
+            message: 'Action ID not found in step metadata',
+          })
+          .where(eq(executionLogs.id, executionLog.id));
         return;
       }
 
-      const actionDetails = apps
-        .find((app) => app.id === appId)
-        ?.actions?.find((action) => action.id === actionId);
       if (!actionDetails) {
         console.log(`Action ${actionId} not found in app ${appId}`);
+        await db
+          .update(executionLogs)
+          .set({
+            status: ExecutionStatus.FAILED,
+            message: `Action ${actionId} not found in app ${appId}`,
+          })
+          .where(eq(executionLogs.id, executionLog.id));
         return;
       }
 
-      const app = apps.find((app) => app.id === appId);
       if (!app) {
         console.log(`App ${appId} not found`);
+        await db
+          .update(executionLogs)
+          .set({
+            status: ExecutionStatus.FAILED,
+            message: `App ${appId} not found`,
+          })
+          .where(eq(executionLogs.id, executionLog.id));
         return;
       }
 
@@ -116,12 +158,28 @@ export const actionWorker = new Worker<ActionJobData>(
 
       if (!success) {
         console.log(`Action ${actionId} failed for step ${stepId}: ${message}`);
+        await db
+          .update(executionLogs)
+          .set({
+            status: ExecutionStatus.FAILED,
+            message: message || `Action ${actionDetails.name} failed`,
+          })
+          .where(eq(executionLogs.id, executionLog.id));
         return;
       }
 
       console.log(
         `Action ${actionId} completed successfully for step ${stepId}`,
       );
+
+      await db
+        .update(executionLogs)
+        .set({
+          status: ExecutionStatus.COMPLETED,
+          message:
+            message || `Action ${actionDetails.name} completed successfully`,
+        })
+        .where(eq(executionLogs.id, executionLog.id));
 
       const nextStepDetails = await db.query.steps.findFirst({
         where: and(
@@ -140,12 +198,14 @@ export const actionWorker = new Worker<ActionJobData>(
       console.log(`Queueing next step ${nextStepDetails.id}`);
       await actionQueue.add('action', {
         stepId: nextStepDetails.id,
+        jobId: job.data.jobId,
       });
     } catch (error) {
       console.error('Action failed with error:', error);
       if (error instanceof Error) {
         console.error('Error details:', error.message, error.stack);
       }
+      throw error;
     }
   },
   {
