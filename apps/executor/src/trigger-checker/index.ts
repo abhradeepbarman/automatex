@@ -27,8 +27,70 @@ function hasValidAuth(app: IApp, triggerDetails: any): boolean {
   return true;
 }
 
+async function updateExecutionLog(
+  logId: string,
+  status: ExecutionStatus,
+  message: string,
+) {
+  await db
+    .update(executionLogs)
+    .set({ status, message })
+    .where(eq(executionLogs.id, logId));
+}
+
+async function queueNextAction(workflow: any, jobId: string): Promise<boolean> {
+  const firstActionDetails = workflow.steps.find(
+    (step: any) => step.index === 1,
+  );
+
+  if (!firstActionDetails) {
+    console.log(`Workflow ${workflow.id} has no action step after trigger`);
+    return false;
+  }
+
+  if (firstActionDetails.type !== StepType.ACTION) {
+    console.log(`Workflow ${workflow.id} second step is not an action`);
+    return false;
+  }
+
+  console.log(
+    `Adding action ${firstActionDetails.id} to queue for workflow ${workflow.id}`,
+  );
+
+  await actionQueue.add(queueName, {
+    stepId: firstActionDetails.id,
+    jobId,
+  });
+
+  console.log(
+    `Action ${firstActionDetails.id} added to queue for workflow ${workflow.id}`,
+  );
+
+  return true;
+}
+
+async function handleSuccessfulTrigger(
+  workflow: any,
+  triggerDetails: any,
+  trigger: any,
+  log: any,
+  jobId: string,
+  message: string,
+) {
+  console.log(
+    `Trigger ${triggerDetails.name} ran successfully for workflow ${workflow.id}`,
+  );
+
+  await updateExecutionLog(
+    log.id,
+    ExecutionStatus.COMPLETED,
+    message || `Trigger ${trigger.name} completed successfully`,
+  );
+
+  await queueNextAction(workflow, jobId);
+}
+
 export function startTriggerChecker() {
-  // Run every minute
   cron.schedule('* * * * *', async () => {
     try {
       console.log('Checking triggers...');
@@ -69,7 +131,7 @@ export function startTriggerChecker() {
         }
 
         if (!app.triggers) {
-          console.log(`App ${app.id} has no triggers`);
+          console.log(`App ${app.name} has no triggers`);
           continue;
         }
 
@@ -95,7 +157,7 @@ export function startTriggerChecker() {
         );
 
         const jobId = uuid();
-        const [executionLog] = await db
+        const [log] = await db
           .insert(executionLogs)
           .values({
             workflowId: workflow.id,
@@ -106,7 +168,7 @@ export function startTriggerChecker() {
           })
           .returning();
 
-        if (!executionLog) {
+        if (!log) {
           console.log(
             `Failed to create execution log for workflow ${workflow.id}`,
           );
@@ -119,106 +181,76 @@ export function startTriggerChecker() {
           triggerDetails.connections?.accessToken || '',
         );
 
-        if (
-          !success &&
-          statusCode === 401 &&
-          app.auth &&
-          triggerDetails.connections?.refreshToken &&
-          triggerDetails.connectionId
-        ) {
-          console.log(
-            `Token expired for workflow ${workflow.id}, refreshing and retrying...`,
-          );
-          try {
-            await getRefreshTokenAndUpdate(triggerDetails.connectionId, app);
-
-            // Retry with refreshed token
-            const updatedConnection = await db.query.connections.findFirst({
-              where: eq(connections.id, triggerDetails.connectionId),
-            });
-
-            if (updatedConnection?.accessToken) {
-              console.log(
-                `Retrying trigger ${trigger.id} with refreshed token`,
-              );
-              const retryResult = await trigger.run(
-                (triggerDetails.metadata as any).data.fields,
-                workflow.lastExecutedAt,
-                updatedConnection.accessToken,
-              );
-              success = retryResult.success;
-              message = retryResult.message;
-              statusCode = retryResult.statusCode;
-            }
-          } catch (refreshError) {
-            console.error(
-              `Failed to refresh token for workflow ${workflow.id}:`,
-              refreshError,
-            );
-          }
-        }
-
         if (success && statusCode === 200) {
-          console.log(
-            `Trigger ${trigger.id} ran successfully for workflow ${workflow.id}`,
-          );
-
-          await db
-            .update(executionLogs)
-            .set({
-              status: ExecutionStatus.COMPLETED,
-              message:
-                message || `Trigger ${trigger.name} completed successfully`,
-            })
-            .where(eq(executionLogs.id, executionLog.id));
-
-          await db
-            .update(workflows)
-            .set({
-              lastExecutedAt: new Date(),
-            })
-            .where(eq(workflows.id, workflow.id));
-
-          const firstActionDetails = workflow.steps.find(
-            (step) => step.index === 1,
-          );
-          if (!firstActionDetails) {
-            console.log(
-              `Workflow ${workflow.id} has no action step after trigger`,
-            );
-            continue;
-          }
-
-          if (firstActionDetails.type !== StepType.ACTION) {
-            console.log(`Workflow ${workflow.id} second step is not an action`);
-            continue;
-          }
-
-          console.log(
-            `Adding action ${firstActionDetails.id} to queue for workflow ${workflow.id}`,
-          );
-
-          await actionQueue.add(queueName, {
-            stepId: firstActionDetails.id,
+          await handleSuccessfulTrigger(
+            workflow,
+            triggerDetails,
+            trigger,
+            log,
             jobId,
-          });
-
-          console.log(
-            `Action ${firstActionDetails.id} added to queue for workflow ${workflow.id}`,
+            message,
           );
+        } else if (!success && statusCode === 401) {
+          console.error(
+            `Trigger ${triggerDetails.name} failed for workflow ${workflow.id}: ${message}`,
+          );
+
+          const { access_token } = await getRefreshTokenAndUpdate(
+            triggerDetails.connectionId!,
+            app,
+          );
+
+          if (!access_token) {
+            console.error(
+              `Failed to refresh token for workflow ${workflow.id}`,
+            );
+            await updateExecutionLog(
+              log.id,
+              ExecutionStatus.FAILED,
+              `Trigger ${trigger.name} failed`,
+            );
+            return;
+          }
+
+          const retryResult = await trigger.run(
+            (triggerDetails.metadata as any).data.fields,
+            workflow.lastExecutedAt,
+            access_token,
+          );
+
+          if (retryResult.success && retryResult.statusCode === 200) {
+            await handleSuccessfulTrigger(
+              workflow,
+              triggerDetails,
+              trigger,
+              log,
+              jobId,
+              retryResult.message,
+            );
+          } else {
+            console.error(
+              `Trigger ${triggerDetails.name} failed for workflow ${workflow.id}: ${retryResult.message}`,
+            );
+            await updateExecutionLog(
+              log.id,
+              ExecutionStatus.FAILED,
+              retryResult.message || `Trigger ${trigger.name} failed`,
+            );
+          }
         } else {
-          console.log(
-            `Trigger ${trigger.id} failed for workflow ${workflow.id}: ${message}`,
+          await updateExecutionLog(
+            log.id,
+            ExecutionStatus.FAILED,
+            message || `Trigger ${trigger.name} failed`,
           );
-
-          await db
-            .update(executionLogs)
-            .set({
-              status: ExecutionStatus.FAILED,
-              message: message || `Trigger ${trigger.name} failed`,
-            })
-            .where(eq(executionLogs.id, executionLog.id));
         }
+
+        await db
+          .update(workflows)
+          .set({
+            lastExecutedAt: new Date(),
+          })
+          .where(eq(workflows.id, workflow.id));
       }
     } catch (error) {
       console.error('Error checking triggers:', error);

@@ -1,7 +1,7 @@
 import apps from '@repo/common/@apps';
 import { ExecutionStatus, StepType } from '@repo/common/types';
 import db from '@repo/db';
-import { connections, executionLogs, steps } from '@repo/db/schema';
+import { executionLogs, steps } from '@repo/db/schema';
 import { Job, Worker } from 'bullmq';
 import { and, eq } from 'drizzle-orm';
 import config from '../config';
@@ -11,6 +11,66 @@ import { getRefreshTokenAndUpdate } from '../utils';
 interface ActionJobData {
   stepId: string;
   jobId: string;
+}
+
+async function updateExecutionLog(
+  logId: string,
+  status: ExecutionStatus,
+  message: string,
+) {
+  await db
+    .update(executionLogs)
+    .set({ status, message })
+    .where(eq(executionLogs.id, logId));
+}
+
+async function queueNextStep(
+  stepDetails: any,
+  workflowDetails: any,
+  jobId: string,
+): Promise<boolean> {
+  const nextStepDetails = await db.query.steps.findFirst({
+    where: and(
+      eq(steps.workflowId, workflowDetails.id),
+      eq(steps.index, stepDetails.index + 1),
+    ),
+  });
+
+  if (!nextStepDetails) {
+    console.log(
+      `No next step found after step ${stepDetails.id} (index ${stepDetails.index})`,
+    );
+    return false;
+  }
+
+  console.log(`Queueing next step ${nextStepDetails.id}`);
+  await actionQueue.add(queueName, {
+    stepId: nextStepDetails.id,
+    jobId,
+  });
+
+  return true;
+}
+
+async function handleSuccessfulAction(
+  stepDetails: any,
+  workflowDetails: any,
+  actionDetails: any,
+  log: any,
+  jobId: string,
+  message: string,
+) {
+  console.log(
+    `Action ${actionDetails.id} completed successfully for step ${stepDetails.id}`,
+  );
+
+  await updateExecutionLog(
+    log.id,
+    ExecutionStatus.COMPLETED,
+    message || `Action ${actionDetails.name} completed successfully`,
+  );
+
+  await queueNextStep(stepDetails, workflowDetails, jobId);
 }
 
 export const actionWorker = new Worker<ActionJobData>(
@@ -58,71 +118,60 @@ export const actionWorker = new Worker<ActionJobData>(
 
       if (stepDetails.type !== StepType.ACTION) {
         console.log(`Step ${stepId} is not an action`);
-        await db
-          .update(executionLogs)
-          .set({
-            status: ExecutionStatus.FAILED,
-            message: `Step is not an action (type: ${stepDetails.type})`,
-          })
-          .where(eq(executionLogs.id, executionLog.id));
+        await updateExecutionLog(
+          executionLog.id,
+          ExecutionStatus.FAILED,
+          `Step is not an action (type: ${stepDetails.type})`,
+        );
         return;
       }
 
       const workflowDetails = stepDetails.workflows;
 
-      const { appId, fields } = (stepDetails.metadata as any).data;
+      const { fields } = (stepDetails.metadata as any).data;
 
       console.log(
-        `Executing action ${actionId} for app ${appId} in workflow ${workflowDetails.id}`,
+        `Executing action ${actionId} for app ${stepDetails.app} in workflow ${workflowDetails.id}`,
       );
 
       if (!actionId) {
         console.log('Action ID not found in step metadata');
-        await db
-          .update(executionLogs)
-          .set({
-            status: ExecutionStatus.FAILED,
-            message: 'Action ID not found in step metadata',
-          })
-          .where(eq(executionLogs.id, executionLog.id));
+        await updateExecutionLog(
+          executionLog.id,
+          ExecutionStatus.FAILED,
+          'Action ID not found in step metadata',
+        );
         return;
       }
 
       if (!actionDetails) {
-        console.log(`Action ${actionId} not found in app ${appId}`);
-        await db
-          .update(executionLogs)
-          .set({
-            status: ExecutionStatus.FAILED,
-            message: `Action ${actionId} not found in app ${appId}`,
-          })
-          .where(eq(executionLogs.id, executionLog.id));
+        console.log(`Action ${actionId} not found in app ${stepDetails.app}`);
+        await updateExecutionLog(
+          executionLog.id,
+          ExecutionStatus.FAILED,
+          `Action ${actionId} not found in app ${stepDetails.app}`,
+        );
         return;
       }
 
       if (!app) {
-        console.log(`App ${appId} not found`);
-        await db
-          .update(executionLogs)
-          .set({
-            status: ExecutionStatus.FAILED,
-            message: `App ${appId} not found`,
-          })
-          .where(eq(executionLogs.id, executionLog.id));
+        console.log(`App ${stepDetails.app} not found`);
+        await updateExecutionLog(
+          executionLog.id,
+          ExecutionStatus.FAILED,
+          `App ${stepDetails.app} not found`,
+        );
         return;
       }
 
-      let { success, message, statusCode } = await actionDetails.run(
+      let result = await actionDetails.run(
         fields,
         stepDetails.connections?.accessToken,
       );
 
-      console.log('message--', statusCode);
-
-      // Handle token expiration and retry
       if (
-        !success &&
-        statusCode === 401 &&
+        !result.success &&
+        result.statusCode === 401 &&
         app.auth &&
         stepDetails.connectionId &&
         stepDetails.connections?.refreshToken
@@ -131,22 +180,14 @@ export const actionWorker = new Worker<ActionJobData>(
           `Token expired for step ${stepId}, refreshing and retrying...`,
         );
         try {
-          await getRefreshTokenAndUpdate(stepDetails.connectionId, app);
+          const { access_token } = await getRefreshTokenAndUpdate(
+            stepDetails.connectionId,
+            app,
+          );
 
-          // Retry with refreshed token
-          const updatedConnection = await db.query.connections.findFirst({
-            where: eq(connections.id, stepDetails.connectionId),
-          });
-
-          if (updatedConnection?.accessToken) {
+          if (access_token) {
             console.log(`Retrying action ${actionId} with refreshed token`);
-            const retryResult = await actionDetails.run(
-              fields,
-              updatedConnection.accessToken,
-            );
-            success = retryResult.success;
-            message = retryResult.message;
-            statusCode = retryResult.statusCode;
+            result = await actionDetails.run(fields, access_token);
           }
         } catch (refreshError) {
           console.error(
@@ -156,50 +197,26 @@ export const actionWorker = new Worker<ActionJobData>(
         }
       }
 
-      if (!success) {
-        console.log(`Action ${actionId} failed for step ${stepId}: ${message}`);
-        await db
-          .update(executionLogs)
-          .set({
-            status: ExecutionStatus.FAILED,
-            message: message || `Action ${actionDetails.name} failed`,
-          })
-          .where(eq(executionLogs.id, executionLog.id));
-        return;
-      }
-
-      console.log(
-        `Action ${actionId} completed successfully for step ${stepId}`,
-      );
-
-      await db
-        .update(executionLogs)
-        .set({
-          status: ExecutionStatus.COMPLETED,
-          message:
-            message || `Action ${actionDetails.name} completed successfully`,
-        })
-        .where(eq(executionLogs.id, executionLog.id));
-
-      const nextStepDetails = await db.query.steps.findFirst({
-        where: and(
-          eq(steps.workflowId, workflowDetails.id),
-          eq(steps.index, stepDetails.index + 1),
-        ),
-      });
-
-      if (!nextStepDetails) {
+      if (!result.success) {
         console.log(
-          `No next step found after step ${stepId} (index ${stepDetails.index})`,
+          `Action ${actionId} failed for step ${stepId}: ${result.message}`,
+        );
+        await updateExecutionLog(
+          executionLog.id,
+          ExecutionStatus.FAILED,
+          result.message || `Action ${actionDetails.name} failed`,
         );
         return;
       }
 
-      console.log(`Queueing next step ${nextStepDetails.id}`);
-      await actionQueue.add('action', {
-        stepId: nextStepDetails.id,
-        jobId: job.data.jobId,
-      });
+      await handleSuccessfulAction(
+        stepDetails,
+        workflowDetails,
+        actionDetails,
+        executionLog,
+        jobId,
+        result.message,
+      );
     } catch (error) {
       console.error('Action failed with error:', error);
       if (error instanceof Error) {

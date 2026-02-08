@@ -49,23 +49,25 @@ export const newEmail: ITrigger<NewEmailMetadata> = {
   ],
 
   run: async (
-    metadata,
+    metadata: NewEmailMetadata,
     lastExecutedAt,
     accessToken,
   ): Promise<ReturnResponse> => {
     try {
       const { field, operator, value } = metadata;
       const lastExecuted = lastExecutedAt ? new Date(lastExecutedAt) : null;
+      const params = new URLSearchParams();
 
-      let query = 'q=is:unread';
+      params.set('q', 'is:unread');
       if (lastExecuted) {
         const seconds = Math.floor(lastExecuted.getTime() / 1000);
-        query += ` after:${seconds}`;
+        params.set('after', seconds.toString());
       }
 
       const response = await axios.get(
-        `https://www.googleapis.com/gmail/v1/users/me/messages?${query}`,
+        `https://www.googleapis.com/gmail/v1/users/me/messages`,
         {
+          params,
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
@@ -138,15 +140,22 @@ export const newEmail: ITrigger<NewEmailMetadata> = {
         statusCode: 200,
       };
     } catch (error) {
-      const err = error as AxiosError<any>;
-      console.error('Error executing new email trigger:', error);
+      if (error instanceof AxiosError) {
+        return {
+          success: false,
+          message:
+            error.response?.data?.error?.message ||
+            'Error executing new email trigger',
+          statusCode: error.response?.status || 500,
+          error: error.message,
+        };
+      }
+
       return {
         success: false,
-        message:
-          err.response?.data?.error?.message ||
-          'Error executing new email trigger',
-        statusCode: err.response?.status || 500,
-        error: err.message,
+        message: 'Error executing new email trigger',
+        statusCode: 500,
+        error: error as any,
       };
     }
   },

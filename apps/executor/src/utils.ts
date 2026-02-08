@@ -1,7 +1,7 @@
+import type { IApp, TokenResponse } from '@repo/common/types';
 import db from '@repo/db';
 import { connections } from '@repo/db/schema';
 import { eq } from 'drizzle-orm';
-import type { IApp } from '@repo/common/types';
 
 /**
  * Refreshes an expired access token and updates the connection in the database
@@ -12,32 +12,42 @@ import type { IApp } from '@repo/common/types';
 export async function getRefreshTokenAndUpdate(
   connectionId: string,
   app: IApp,
-): Promise<void> {
-  const connection = await db.query.connections.findFirst({
-    where: eq(connections.id, connectionId),
-  });
+): Promise<TokenResponse> {
+  try {
+    const connection = await db.query.connections.findFirst({
+      where: eq(connections.id, connectionId),
+    });
 
-  if (!connection) {
-    throw new Error('Connection not found');
+    if (!connection) {
+      throw new Error('Connection not found');
+    }
+
+    if (!app.auth) {
+      throw new Error('App has no auth');
+    }
+
+    if (!connection.refreshToken) {
+      throw new Error('Connection has no refresh token');
+    }
+
+    const { access_token, refresh_token, expires_in } =
+      await app.auth.refreshAccessToken(connection.refreshToken);
+
+    await db
+      .update(connections)
+      .set({
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        expiresAt: new Date(Date.now() + expires_in * 1000),
+      })
+      .where(eq(connections.id, connectionId));
+
+    return {
+      access_token,
+      refresh_token,
+      expires_in,
+    };
+  } catch (error) {
+    throw error;
   }
-
-  if (!app.auth) {
-    throw new Error('App has no auth');
-  }
-
-  if (!connection.refreshToken) {
-    throw new Error('Connection has no refresh token');
-  }
-
-  const { access_token, refresh_token, expires_in } =
-    await app.auth.refreshAccessToken(connection.refreshToken);
-
-  await db
-    .update(connections)
-    .set({
-      accessToken: access_token,
-      refreshToken: refresh_token,
-      expiresAt: new Date(Date.now() + expires_in * 1000),
-    })
-    .where(eq(connections.id, connectionId));
 }

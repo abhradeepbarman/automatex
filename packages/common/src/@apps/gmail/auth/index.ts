@@ -25,78 +25,93 @@ const getAuthUrl = (): string => {
 };
 
 const getToken = async (code: string): Promise<TokenResponse> => {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
-  const grant_type = 'authorization_code';
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+    const grant_type = 'authorization_code';
 
-  const tokenUrl = 'https://oauth2.googleapis.com/token';
-  const params = new URLSearchParams({
-    client_id: clientId!,
-    client_secret: clientSecret!,
-    redirect_uri: redirectUri!,
-    grant_type,
-    code,
-  });
+    const tokenUrl = 'https://oauth2.googleapis.com/token';
+    const params = new URLSearchParams({
+      client_id: clientId!,
+      client_secret: clientSecret!,
+      redirect_uri: redirectUri!,
+      grant_type,
+      code,
+    });
 
-  const { data } = await axios.post(tokenUrl, params.toString(), {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-  });
+    const { data } = await axios.post(tokenUrl, params.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
 
-  return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expires_in: data.expires_in,
-  };
+    return {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in,
+    };
+  } catch (error) {
+    console.error('Error getting token:', error);
+    throw error;
+  }
 };
 
 const getUserInfo = async (
   accessToken: string,
 ): Promise<{ id: string; name: string; email: string }> => {
-  const { data } = await axios.get(
-    'https://www.googleapis.com/oauth2/v2/userinfo',
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+  try {
+    const { data } = await axios.get(
+      'https://www.googleapis.com/oauth2/v2/userinfo',
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-    },
-  );
+    );
 
-  return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-  };
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+    };
+  } catch (error) {
+    console.error('Error getting user info:', error);
+    throw error;
+  }
 };
 
 const refreshAccessToken = async (
   refreshToken: string,
 ): Promise<TokenResponse> => {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const grant_type = 'refresh_token';
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const grant_type = 'refresh_token';
 
-  const tokenUrl = 'https://oauth2.googleapis.com/token';
-  const params = new URLSearchParams({
-    client_id: clientId!,
-    client_secret: clientSecret!,
-    grant_type,
-    refresh_token: refreshToken,
-  });
+    const tokenUrl = 'https://oauth2.googleapis.com/token';
+    const params = new URLSearchParams({
+      client_id: clientId!,
+      client_secret: clientSecret!,
+      grant_type,
+      refresh_token: refreshToken,
+    });
 
-  const { data } = await axios.post(tokenUrl, params.toString(), {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-  });
+    const { data } = await axios.post(tokenUrl, params.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
 
-  return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token || refreshToken,
-    expires_in: data.expires_in,
-  };
+    return {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || refreshToken,
+      expires_in: data.expires_in,
+    };
+  } catch (error) {
+    console.error('Error refreshing access token:', error);
+    throw error;
+  }
 };
 
 export default {

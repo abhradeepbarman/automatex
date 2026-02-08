@@ -37,7 +37,10 @@ export const sendEmail: IAction<SendEmailMetadata> = {
     },
   ],
 
-  run: async (metadata, accessToken): Promise<ReturnResponse> => {
+  run: async (
+    metadata: SendEmailMetadata,
+    accessToken,
+  ): Promise<ReturnResponse> => {
     try {
       const { to, subject, body } = metadata;
 
@@ -77,13 +80,21 @@ export const sendEmail: IAction<SendEmailMetadata> = {
         data: response.data,
       };
     } catch (error) {
-      const err = error as AxiosError<any>;
+      if (error instanceof AxiosError) {
+        return {
+          success: false,
+          message:
+            error.response?.data?.error?.message || 'Error sending email',
+          statusCode: error.response?.status || 500,
+          error: error.message,
+        };
+      }
 
       return {
         success: false,
-        message: err.response?.data?.error?.message || 'Error sending email',
-        statusCode: err.response?.status || 500,
-        error: err.message,
+        message: 'Error sending email',
+        statusCode: 500,
+        error: error as any,
       };
     }
   },
