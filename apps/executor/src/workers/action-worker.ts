@@ -1,11 +1,11 @@
-import { Worker, Job } from 'bullmq';
+import apps from '@repo/common/@apps';
+import { ExecutionStatus, StepType } from '@repo/common/types';
+import db from '@repo/db';
+import { connections, executionLogs, steps } from '@repo/db/schema';
+import { Job, Worker } from 'bullmq';
+import { and, eq } from 'drizzle-orm';
 import config from '../config';
 import { actionQueue, queueName } from '../queue';
-import db from '@repo/db';
-import { eq, and } from 'drizzle-orm';
-import { connections, steps, executionLogs } from '@repo/db/schema';
-import { StepType, type IApp, ExecutionStatus } from '@repo/common/types';
-import apps from '@repo/common/@apps';
 import { getRefreshTokenAndUpdate } from '../utils';
 
 interface ActionJobData {
@@ -45,7 +45,7 @@ export const actionWorker = new Worker<ActionJobData>(
         .values({
           workflowId: stepDetails.workflows.id,
           stepId: stepId,
-          jobId: jobId || job.id!.toString(),
+          jobId: jobId,
           message: `Action ${actionDetails?.name || actionId || 'unknown'} execution started`,
           status: ExecutionStatus.RUNNING,
         })
@@ -70,7 +70,7 @@ export const actionWorker = new Worker<ActionJobData>(
 
       const workflowDetails = stepDetails.workflows;
 
-      const { appId, index, fields } = (stepDetails.metadata as any).data;
+      const { appId, fields } = (stepDetails.metadata as any).data;
 
       console.log(
         `Executing action ${actionId} for app ${appId} in workflow ${workflowDetails.id}`,

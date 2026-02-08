@@ -1,9 +1,10 @@
 import apps from '@repo/common/@apps';
-import { StepType, type IApp, ExecutionStatus } from '@repo/common/types';
+import { ExecutionStatus, StepType, type IApp } from '@repo/common/types';
 import db from '@repo/db';
-import { connections, workflows, executionLogs } from '@repo/db/schema';
+import { connections, executionLogs, workflows } from '@repo/db/schema';
 import { eq } from 'drizzle-orm';
 import cron from 'node-cron';
+import { v4 as uuid } from 'uuid';
 import { actionQueue, queueName } from '../queue';
 import { getRefreshTokenAndUpdate } from '../utils';
 
@@ -93,13 +94,13 @@ export function startTriggerChecker() {
           `Running trigger ${trigger.id} for workflow ${workflow.id}`,
         );
 
-        // Create execution log for trigger
+        const jobId = uuid();
         const [executionLog] = await db
           .insert(executionLogs)
           .values({
             workflowId: workflow.id,
             stepId: triggerDetails.id,
-            jobId: `trigger-${workflow.id}-${Date.now()}`,
+            jobId: jobId,
             message: `Trigger ${trigger.name} execution started`,
             status: ExecutionStatus.RUNNING,
           })
@@ -157,13 +158,11 @@ export function startTriggerChecker() {
           }
         }
 
-        // Process successful trigger execution
         if (success && statusCode === 200) {
           console.log(
             `Trigger ${trigger.id} ran successfully for workflow ${workflow.id}`,
           );
 
-          // Update execution log to completed
           await db
             .update(executionLogs)
             .set({
@@ -201,7 +200,7 @@ export function startTriggerChecker() {
 
           await actionQueue.add(queueName, {
             stepId: firstActionDetails.id,
-            jobId: `${firstActionDetails.id}-${Date.now()}`,
+            jobId,
           });
 
           console.log(
@@ -212,7 +211,6 @@ export function startTriggerChecker() {
             `Trigger ${trigger.id} failed for workflow ${workflow.id}: ${message}`,
           );
 
-          // Update execution log to failed
           await db
             .update(executionLogs)
             .set({

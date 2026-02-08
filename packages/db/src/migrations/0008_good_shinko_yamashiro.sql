@@ -1,0 +1,1 @@
+ALTER TABLE "execution_logs" DROP COLUMN "job_id";

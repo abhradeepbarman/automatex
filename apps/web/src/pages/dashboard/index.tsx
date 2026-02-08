@@ -1,31 +1,4 @@
 import Navbar from '@/components/common/navbar';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import workflowService from '@/services/workflow.service';
-import dashboardService from '@/services/dashboard.service';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AxiosError } from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
-import { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
-import { Pencil, Check, X, Trash2 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +10,33 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import { Switch } from '@/components/ui/switch';
+import { formatDate } from '@/lib/utils';
+import dashboardService from '@/services/dashboard.service';
+import workflowService from '@/services/workflow.service';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { AxiosError } from 'axios';
+import { Check, Pencil, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -82,7 +82,7 @@ const Dashboard = () => {
   const formatLastRun = (lastExecutedAt: string | null) => {
     if (!lastExecutedAt) return 'Never';
     try {
-      return formatDistanceToNow(new Date(lastExecutedAt), { addSuffix: true });
+      return formatDate(lastExecutedAt);
     } catch {
       return 'Never';
     }
@@ -359,14 +359,6 @@ const WorkflowItem = ({
     deleteWorkflow();
   };
 
-  const formatCreatedAt = (createdAt: string) => {
-    try {
-      return formatDistanceToNow(new Date(createdAt), { addSuffix: true });
-    } catch {
-      return 'Unknown';
-    }
-  };
-
   return (
     <div
       className="group flex items-center justify-between gap-4 py-4 cursor-pointer hover:bg-accent/50 transition-colors px-2 -mx-2 rounded"
@@ -461,7 +453,7 @@ const WorkflowItem = ({
             </div>
             <div className="space-y-0.5">
               <p className="text-xs text-muted-foreground">
-                Created {formatCreatedAt(createdAt)}
+                Created {formatDate(createdAt)}
               </p>
               <p className="text-xs text-muted-foreground">
                 Last run: {lastRun}

@@ -57,6 +57,20 @@
       "when": 1770450870514,
       "tag": "0007_tired_mentor",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1770479628835,
+      "tag": "0008_good_shinko_yamashiro",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1770479718545,
+      "tag": "0009_hard_prodigy",
+      "breakpoints": true
     }
   ]
 }
