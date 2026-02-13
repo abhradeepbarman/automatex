@@ -23,4 +23,4 @@ jobs:
           context: .
           file: ./docker/Dockerfile.server
           push: true
-          tags: automatex/server:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/automatex-server-prod:${{ github.sha }}
