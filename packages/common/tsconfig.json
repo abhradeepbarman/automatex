@@ -4,6 +4,7 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "sourceMap": true,
-    "erasableSyntaxOnly": false
+    "types": ["node"],
+    "verbatimModuleSyntax": false
   }
 }

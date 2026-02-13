@@ -1,8 +1,8 @@
 import axios, { AxiosError } from 'axios';
-import { ReturnResponse, type IAction } from '../../../types';
+import { type ReturnResponse, type IAction } from '../../../types';
 import { z } from 'zod';
 
-interface SendEmailMetadata {
+export interface SendEmailMetadata {
   to: string;
   subject: string;
   body: string;

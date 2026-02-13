@@ -1,8 +1,12 @@
 import z from 'zod';
-import { ITrigger, PollingInterval, ReturnResponse } from '../../../types';
+import {
+  type ITrigger,
+  PollingInterval,
+  type ReturnResponse,
+} from '../../../types';
 import { isIntervalPassed } from '../..';
 
-interface TimerMetadata {
+export interface TimerMetadata {
   intervalMs: PollingInterval;
 }
 

@@ -1,0 +1,16 @@
+FROM node:20.6-alpine
+
+WORKDIR /usr/src/app
+
+RUN npm install -g pnpm
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages ./packages
+COPY apps/executor ./apps/executor
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm turbo run build --filter=executor
+
+EXPOSE 9000
+
+CMD ["node", "apps/executor/dist/index.js"]

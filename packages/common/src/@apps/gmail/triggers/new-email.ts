@@ -2,12 +2,12 @@ import axios, { AxiosError } from 'axios';
 import {
   ConditionOperator,
   PollingInterval,
-  ReturnResponse,
+  type ReturnResponse,
   type ITrigger,
 } from '../../../types';
 import { z } from 'zod';
 
-interface NewEmailMetadata {
+export interface NewEmailMetadata {
   intervalMs: PollingInterval;
   field: 'subject' | 'body';
   operator: ConditionOperator;

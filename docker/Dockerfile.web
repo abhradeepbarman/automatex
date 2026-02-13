@@ -1,0 +1,16 @@
+FROM node:20.6-alpine
+
+WORKDIR /usr/src/app
+
+RUN npm install -g pnpm
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages ./packages
+COPY apps/web ./apps/web
+
+RUN pnpm install
+RUN pnpm turbo run build --filter=web
+
+EXPOSE 5173
+
+CMD ["node", "apps/web/dist/index.js"]
