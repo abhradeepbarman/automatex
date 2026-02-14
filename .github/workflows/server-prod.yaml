@@ -24,3 +24,21 @@ jobs:
           file: ./docker/Dockerfile.server
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/automatex-server-prod:${{ github.sha }}
+
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/automatex-server-prod:${{ github.sha }}
+
+            docker stop automatex-server || true
+            docker rm automatex-server || true
+
+            docker run -d \
+              --name automatex-server \
+              -p 3001:3001 \
+              --restart always \
+              ${{ secrets.DOCKERHUB_USERNAME }}/automatex-server-prod:${{ github.sha }}
