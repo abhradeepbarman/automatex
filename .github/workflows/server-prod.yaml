@@ -7,7 +7,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # clone codebase to ubuntu machine
       - name: Checkout the code
         uses: actions/checkout@v2
 
@@ -26,19 +25,21 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/automatex-server-prod:${{ github.sha }}
 
       - name: Deploy to VM
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/automatex-server-prod:${{ github.sha }}
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/automatex-server-prod:${{ github.sha }}
+            docker pull "$IMAGE"
 
             docker stop automatex-server || true
             docker rm automatex-server || true
 
             docker run -d \
               --name automatex-server \
-              -p 3001:3001 \
-              --restart always \
-              ${{ secrets.DOCKERHUB_USERNAME }}/automatex-server-prod:${{ github.sha }}
+              --restart unless-stopped \
+              -p 8000:8000 \
+              "$IMAGE"
